@@ -157,7 +157,7 @@ public class Main {
 		rnd.setSeed(0);
 		
 		int num_attr = 3;
-		int num_mach = 81;
+		int num_mach = 4;
 		int num_training_samples = 1000;
 		int num_new_samples = 1000;
 		int num_experiments = 100;
@@ -189,7 +189,7 @@ public class Main {
 			// Generates new update & search loads
 			ArrayList<Update> newUplist = generateUpdateLoad(num_attr, num_new_samples, rnd);
 			ArrayList<Search> newSlist  = generateSearchLoad(num_attr, num_new_samples, rnd);
-			
+
 			// Checks touches
 			for (Region r : regions) {
 				

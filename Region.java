@@ -39,14 +39,15 @@ public class Region {
 	}
 	
 	private boolean isTouch(Search search) {
+		boolean flag = true;
 		for (PairAttributeRange qpair : search.getPairs())
 			for (PairAttributeRange rpair : pairs)
 				if (qpair.getAttrkey().equals(rpair.getAttrkey()))
-					if (qpair.getRange().getLow() < rpair.getRange().getHigh() && qpair.getRange().getHigh() > rpair.getRange().getLow()) {
-						this.search_load.add(search);
-						return true;
-					}
-		return false;
+					if (qpair.getRange().getLow() > rpair.getRange().getHigh() || qpair.getRange().getHigh() < rpair.getRange().getLow())
+						flag = false;
+		if (flag)
+			this.search_load.add(search);
+		return flag;
 	}
 	
 	public List<Update> getUpdateLoad(List<Update> uplist) {
