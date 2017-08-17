@@ -60,10 +60,10 @@ public class HeuristicV1 {
 				
 				for (PairAttributeRange p : r.getPairs()) { // for each attribute
 					
-					double precision = 0.01;
+					double interval_size = 0.01;
 					int index = r.getPairs().indexOf(p);
 					
-					for (double j = p.getRange().getLow()+precision; j < p.getRange().getHigh(); j+=precision) { // here we split the interval [0,1] into intervals of size 0.01 (precision)
+					for (double j = p.getRange().getLow()+interval_size; j < p.getRange().getHigh(); j+=interval_size) { // here we split the interval [0,1] into intervals of size 0.01
 						
 						// Creates a copy of regions
 						List<Region> newRegions = copyRegions();

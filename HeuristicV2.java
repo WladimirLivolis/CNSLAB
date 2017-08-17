@@ -14,6 +14,22 @@ public class HeuristicV2 {
 		this.regions = regions;
 	}
 	
+	/* Calculates search load for an interval */ 
+	private int search_touches_counter(ArrayList<Search> slist, double interval_size, double interval_end) {
+		int index = 0; // attribute (axis)
+		int count = 0;
+		for (Search s : slist) {
+			double ini = s.getPairs().get(index).getRange().getLow();
+			double end = s.getPairs().get(index).getRange().getHigh();
+			if (ini <= interval_end)
+				if (end < interval_end)
+					count += (int) (((end-ini)/interval_size) + 1);
+				else
+					count += (int) (((interval_end-ini)/interval_size) + 1);
+		}
+		return count;
+	}
+	
 	/* Splits region into *square root of n* MEE (mutually exclusive and exhaustive) regions, where n = number of machines.
 	 * 
 	 * Given update & search loads, we find the quantile points regarding only one attribute axis.
@@ -23,17 +39,15 @@ public class HeuristicV2 {
 		/* PART-1 Identify the quantile points */
 		
 		int index = 0; // attribute (axis)
-		double precision = 0.01;
-		int total_touches = uplist.size()+slist.size();
+		double interval_size = 0.01;
+		int total_touches = uplist.size()+search_touches_counter(slist, interval_size, 1.0);
 		Map<Double, Double> quantiles = new TreeMap<Double, Double>(); // here we use TreeMap just to have the entries sorted by key
-		for (double i = precision; i < 1.0; i+=precision) {  // here we split the interval [0,1] into intervals of size 0.01 (precision)
+		for (double i = interval_size; i < 1.0; i+=interval_size) {  // here we split the interval [0,1] into intervals of size 0.01
 			int upcount = 0, scount = 0;
 			for (Update u : uplist) 								// calculates update load in the interval [0,i]
 				if (u.getAttributes().get(index).getValue() <= i)
 					upcount++;
-			for (Search s : slist)								    // calculates search load in the interval [0,i]
-				if (s.getPairs().get(index).getRange().getLow() <= i) 
-					scount++;
+			scount = search_touches_counter(slist, interval_size, i); // calculates search load in the interval [0,i]
 			int touches = upcount + scount;
 			double square_root = Math.sqrt(num_machines);
 			double quantile = 0.0;

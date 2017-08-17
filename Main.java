@@ -154,12 +154,12 @@ public class Main {
 		/* **** First Experiment: touches per region **** */
 		
 		Random rnd = new Random();
-		rnd.setSeed(0);
+		//rnd.setSeed(0);
 		
 		int num_attr = 3;
-		int num_mach = 4;
-		int num_training_samples = 1000;
-		int num_new_samples = 1000;
+		int num_mach = 81;
+		int num_training_samples = 10000;
+		int num_new_samples = 10000;
 		int num_experiments = 100;
 				
 		List<PairAttributeRange> pairs = new ArrayList<PairAttributeRange>();
@@ -178,6 +178,7 @@ public class Main {
 		// Generates update & search loads for training
 		ArrayList<Update> uplist = generateUpdateLoad(num_attr, num_training_samples, rnd);
 		ArrayList<Search> slist  = generateSearchLoad(num_attr, num_training_samples, rnd);
+		//ArrayList<Search> slist = new ArrayList<Search>();
 		
 		//regions = heuristic1.partition(uplist, slist);
 		regions = heuristic2.partition(uplist, slist);	
@@ -186,9 +187,12 @@ public class Main {
 		
 		for (int i = 0; i < num_experiments; i++) {
 			
+			rnd = new Random();
+			
 			// Generates new update & search loads
 			ArrayList<Update> newUplist = generateUpdateLoad(num_attr, num_new_samples, rnd);
 			ArrayList<Search> newSlist  = generateSearchLoad(num_attr, num_new_samples, rnd);
+			//ArrayList<Search> newSlist = new ArrayList<Search>();
 
 			// Checks touches
 			for (Region r : regions) {
