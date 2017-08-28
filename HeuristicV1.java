@@ -18,17 +18,28 @@ public class HeuristicV1 {
 	
 	/* Returns the Jain's Fairness Index (JFI) given a list of regions as well as search & update loads. */
 	public double JFI(ArrayList<Update> uplist, ArrayList<Search> slist, List<Region> rlist) {
-		int upload = 0, sload = 0, upsquare = 0, ssquare = 0;
+		
+		long upload = 0, sload = 0, upsquare = 0, ssquare = 0;
+				
 		for (Region r : rlist) {
 			upload += r.getUpdateLoad(uplist).size();
 			sload += r.getSearchLoad(slist).size();
 			upsquare += Math.pow(r.getUpdateLoad(uplist).size(), 2);
 			ssquare += Math.pow(r.getSearchLoad(slist).size(), 2);
 		}
-		double JU = (double) Math.pow(upload, 2) / ( rlist.size() * upsquare );
-		double JS = (double) Math.pow(sload , 2) / ( rlist.size() * ssquare  );
-		double RHO = (double) slist.size() / ( slist.size() + uplist.size() );
+		
+		double JU = 0.0, JS = 0.0;
+		
+		if (upload != 0)
+			JU = Math.pow(upload, 2) / ( rlist.size() * upsquare );
+		
+		if (sload != 0)
+			JS = Math.pow(sload , 2) / ( rlist.size() * ssquare  );
+								
+		double RHO = (double) sload / ( sload + upload );
+						
 		double JFI = ( RHO * JS ) + ( (1 - RHO) * JU );
+		
 		return JFI;
 	}
 	
@@ -55,6 +66,8 @@ public class HeuristicV1 {
 		for (int i = 1; i < num_iterations; i++) {
 			
 			Map<Double, List<Region>> possiblePartitions = new HashMap<Double, List<Region>>();
+			
+			double bestJFI = 0.0;
 					
 			for (Region r : regions) { // for each region in Regions
 				
@@ -84,7 +97,12 @@ public class HeuristicV1 {
 						// Calculates JFI index
 						double jfindex = JFI(uplist, slist, newRegions);
 						
-						possiblePartitions.put(jfindex, newRegions);
+						// If JFIndex is the best so far, then we keep it
+						if (jfindex > bestJFI) {
+							possiblePartitions.remove(bestJFI);
+							possiblePartitions.put(jfindex, newRegions);
+							bestJFI = jfindex;
+						}
 						
 						
 					}
@@ -93,16 +111,11 @@ public class HeuristicV1 {
 				
 			}
 			
-			// Find the partition with best JFI index
-			double bestJFI = 0.0;
-			for (Map.Entry<Double, List<Region>> map : possiblePartitions.entrySet())
-				if (map.getKey() > bestJFI)
-					bestJFI = map.getKey();
-			
+			// Get the set of partitions with best JFIndex
 			regions = possiblePartitions.get(bestJFI);
 			
 		}
-		
+				
 		return Collections.unmodifiableList(regions);
 		
 	}

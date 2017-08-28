@@ -152,14 +152,17 @@ public class Main {
 	*/	
 		
 		/* **** First Experiment: touches per region **** */
+
 		
 		Random rnd = new Random();
-		//rnd.setSeed(0);
+		rnd.setSeed(0);
 		
 		int num_attr = 3;
 		int num_mach = 81;
-		int num_training_samples = 10000;
-		int num_new_samples = 10000;
+		int num_update_training_samples = 5000;
+		int num_search_training_samples = 5000;
+		int num_update_new_samples = 5000;
+		int num_search_new_samples = 5000;
 		int num_experiments = 100;
 				
 		List<PairAttributeRange> pairs = new ArrayList<PairAttributeRange>();
@@ -172,37 +175,39 @@ public class Main {
 		List<Region> regions = new ArrayList<Region>();
 		regions.add(region);
 		
-		//HeuristicV1 heuristic1 = new HeuristicV1(num_mach, regions);
+		HeuristicV1 heuristic1 = new HeuristicV1(num_mach, regions);
 		HeuristicV2 heuristic2 = new HeuristicV2(num_mach, regions);
 		
 		// Generates update & search loads for training
-		ArrayList<Update> uplist = generateUpdateLoad(num_attr, num_training_samples, rnd);
-		ArrayList<Search> slist  = generateSearchLoad(num_attr, num_training_samples, rnd);
-		//ArrayList<Search> slist = new ArrayList<Search>();
+		ArrayList<Update> uplist = generateUpdateLoad(num_attr, num_update_training_samples, rnd);
+		ArrayList<Search> slist  = generateSearchLoad(num_attr, num_search_training_samples, rnd);
 		
 		//regions = heuristic1.partition(uplist, slist);
 		regions = heuristic2.partition(uplist, slist);	
 		
-		Map<String, List<Integer>> map1 = new HashMap<String, List<Integer>>();
+		Map<String, List<Integer>> map1 = new HashMap<String, List<Integer>>(regions.size());
+		ArrayList<Double> JFIs = new ArrayList<Double>(num_experiments);
 		
 		for (int i = 0; i < num_experiments; i++) {
 			
-			rnd = new Random();
+			//rnd = new Random();
 			
 			// Generates new update & search loads
-			ArrayList<Update> newUplist = generateUpdateLoad(num_attr, num_new_samples, rnd);
-			ArrayList<Search> newSlist  = generateSearchLoad(num_attr, num_new_samples, rnd);
-			//ArrayList<Search> newSlist = new ArrayList<Search>();
+			ArrayList<Update> newUplist = generateUpdateLoad(num_attr, num_update_new_samples, rnd);
+			ArrayList<Search> newSlist  = generateSearchLoad(num_attr, num_search_new_samples, rnd);
+			
+			// Calculates JFI
+			JFIs.add(heuristic1.JFI(newUplist, newSlist, regions));
 
 			// Checks touches
 			for (Region r : regions) {
 				
 				int index = regions.indexOf(r)+1;
 				
-				List<Update> myUpdateLoad = r.getUpdateLoad(newUplist);
-				List<Search> mySearchLoad = r.getSearchLoad(newSlist);
-				
-				int touches = myUpdateLoad.size()+mySearchLoad.size();
+				int myUpdateLoad = r.getUpdateLoad(newUplist).size();
+				int mySearchLoad = r.getSearchLoad(newSlist).size();
+								
+				int touches = myUpdateLoad+mySearchLoad;
 				
 				if (!map1.containsKey("R"+index)) {
 					ArrayList<Integer> t = new ArrayList<Integer>(num_experiments);
@@ -216,7 +221,7 @@ public class Main {
 			
 		}
 		
-		Map<String, Double> map2 = new HashMap<String, Double>();
+		Map<String, Double> map2 = new HashMap<String, Double>(regions.size());
 
 		for (Map.Entry<String, List<Integer>> e : map1.entrySet()) {
 			
@@ -231,6 +236,11 @@ public class Main {
 			map2.put(e.getKey(), avg);
 			
 		}
+		
+		double sum = 0.0;
+		for (double d : JFIs)
+			sum += d;
+		double JFI_avg = sum/JFIs.size();
 		
 		File output1 = new File("./experiment1.txt");
 		FileWriter fw1 = null;
@@ -249,6 +259,8 @@ public class Main {
 				
 			}
 			
+			bw1.newLine();
+			bw1.write("JFI:\t"+JFI_avg);			
 			
 		} catch (IOException e) { e.printStackTrace(); }
 		
@@ -257,7 +269,7 @@ public class Main {
 		
 		/* **** Second Experiment: JFI VS # of samples **** */
 
-	/*	
+	/*
 		
 		Random rnd = new Random();
 		rnd.setSeed(0);
@@ -349,7 +361,7 @@ public class Main {
 		
 		finally { try { bw2.close(); fw2.close(); } catch (Exception e) {} }
 	
-	*/	
+*/
 		
 	}
 
