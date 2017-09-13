@@ -1,5 +1,8 @@
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -44,6 +47,90 @@ public class Main {
 			searches.add(s);
 		}
 		return searches;
+	}
+	
+	private static void generateSearchLoadFile(int AttrNum, int SNum, Random rnd) throws IOException {
+		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("search_load.txt")));
+		bw.write(""+AttrNum);
+		bw.write(" "+SNum);
+		for (int i = 0; i < SNum; i++) {
+			bw.write("\nS"+i);
+			for (int j = 1; j <= AttrNum; j++) {
+				double v1 = rnd.nextDouble();
+				double v2 = rnd.nextDouble();
+				double low, high;
+				if (v1 < v2) {
+					low = v1;
+					high = v2;
+				} else {
+					low = v2;
+					high = v1;
+				}
+				bw.write("\nA"+j);
+				bw.write(" "+low);
+				bw.write(" "+high);
+			}
+		}
+		bw.close();
+	}
+	
+	private static ArrayList<Search> readSearchLoadFile() throws IOException {
+		ArrayList<Search> searches = new ArrayList<Search>();
+		
+		BufferedReader br = new BufferedReader(new FileReader("search_load.txt"));
+		String[] firstLine = br.readLine().split(" ");
+		int attrNum = Integer.parseInt(firstLine[0]);
+		int SNum = Integer.parseInt(firstLine[1]);
+		
+		for (int i = 0; i < SNum; i++) {
+			Search s = new Search(br.readLine());
+			for (int j = 0; j < attrNum; j++) {
+				String[] attrLine = br.readLine().split(" ");
+				s.addPair(attrLine[0], new Range(Double.parseDouble(attrLine[1]), Double.parseDouble(attrLine[2])));
+			}
+			searches.add(s);
+		}
+		
+		br.close();
+		
+		return searches;
+	}
+	
+	private static void generateUpdateLoadFile(int AttrNum, int UpNum, Random rnd) throws IOException {
+		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("update_load.txt")));
+		bw.write(""+AttrNum);
+		bw.write(" "+UpNum);
+		for (int i = 0; i < UpNum; i++) {
+			bw.write("\nU"+i);
+			for (int j = 1; j <= AttrNum; j++) {
+				double v = rnd.nextDouble();
+				bw.write("\nA"+j);
+				bw.write(" "+v);
+			}
+		}
+		bw.close();
+	}
+	
+	private static ArrayList<Update> readUpdateLoadFile() throws IOException {
+		ArrayList<Update> updates = new ArrayList<Update>();
+		
+		BufferedReader br = new BufferedReader(new FileReader("update_load.txt"));
+		String[] firstLine = br.readLine().split(" ");
+		int attrNum = Integer.parseInt(firstLine[0]);
+		int upNum = Integer.parseInt(firstLine[1]);
+		
+		for (int i = 0; i < upNum; i++) {
+			Update up = new Update(br.readLine());
+			for (int j = 0; j < attrNum; j++) {
+				String[] attrLine = br.readLine().split(" ");
+				up.addAttr(attrLine[0], Double.parseDouble(attrLine[1]));
+			}
+			updates.add(up);
+		}
+		
+		br.close();
+		
+		return updates;
 	}
 	
 	public static Map<Integer, Double> calculateConfidenceInterval(Map<Integer, List<Integer>> load, Map<Integer, Double> mean) {
@@ -303,7 +390,7 @@ public class Main {
 				}
 				
 				bw1.newLine();
-				bw1.write("JFI:\t"+JFI_avg);			
+				bw1.write("JFI:\t"+JFI_avg);				
 				
 			} catch (IOException e) { e.printStackTrace(); }
 			
