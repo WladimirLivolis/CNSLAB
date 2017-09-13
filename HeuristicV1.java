@@ -65,6 +65,8 @@ public class HeuristicV1 {
 				
 		for (int i = 1; i < num_iterations; i++) {
 			
+			System.out.println(toString());
+			
 			Map<Double, List<Region>> possiblePartitions = new HashMap<Double, List<Region>>();
 			
 			double bestJFI = 0.0;
@@ -104,7 +106,6 @@ public class HeuristicV1 {
 							bestJFI = jfindex;
 						}
 						
-						
 					}
 					
 				}
@@ -115,9 +116,11 @@ public class HeuristicV1 {
 			regions = possiblePartitions.get(bestJFI);
 			
 		}
+		
+		System.out.println(toString());
 				
 		return Collections.unmodifiableList(regions);
-		
+				
 	}
 	
 	public String toString() {

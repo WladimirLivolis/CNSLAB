@@ -54,8 +54,10 @@ public class HeuristicV2 {
 			for (int j = 1; j < square_root; j++)
 				if ((touches/(double)total_touches) >= j/square_root) { // checks whether i contains j/sqrt(num_machines) of all touches, with 1 <= j <= sqrt(num_machines) - 1
 					quantile = j/square_root;
-					if (!quantiles.containsKey(quantile))
+					if (!quantiles.containsKey(quantile)) {
+						System.out.println("Quantile: "+quantile+" i: "+i+" load: "+(touches/(double)total_touches));
 						quantiles.put(quantile, i); // here we have all the quantiles, which are the points where the hyperplanes will split the axis
+					}
 				}				 
 		}
 		
@@ -80,6 +82,9 @@ public class HeuristicV2 {
 		}
 		
 		regions = newRegions;
+		
+		System.out.println(toString());
+		
 		return Collections.unmodifiableList(regions);
 	}
 	
