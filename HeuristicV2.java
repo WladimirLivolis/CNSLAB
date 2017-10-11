@@ -14,20 +14,44 @@ public class HeuristicV2 {
 		this.regions = regions;
 	}
 	
-	/* Calculates search load for an interval */ 
-	private int search_touches_counter(ArrayList<Search> slist, double interval_size, double interval_end) {
+	private Map<Double, Integer> uploadAndSearchLoadCounter(ArrayList<Update> uplist, ArrayList<Search> slist) {
+		
+		Map<Double, Integer> loadMap = new TreeMap<Double, Integer>();
+		
+		double granularity = 0.01;
 		int index = 0; // attribute (axis)
-		int count = 0;
-		for (Search s : slist) {
-			double ini = s.getPairs().get(index).getRange().getLow();
-			double end = s.getPairs().get(index).getRange().getHigh();
-			if (ini <= interval_end)
-				if (end < interval_end)
-					count += (int) (((end-ini)/interval_size) + 1);
-				else
-					count += (int) (((interval_end-ini)/interval_size) + 1);
+		
+		for (double d = 0.0; d <= 1.0; d += granularity) {
+
+			int count = 0;
+			
+			for (Search s : slist) {				
+				double range_start = s.getPairs().get(index).getRange().getLow();
+				double range_end   = s.getPairs().get(index).getRange().getHigh();
+
+				if (range_start > range_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
+
+					if ( (d >= range_start && d <= 1.0) || (d >= 0.0 && d <= range_end) ) { count++; }
+
+				} else {
+
+					if (d >= range_start && d <= range_end) { count++; }
+
+				}
+			}
+			
+			for (Update up : uplist) {
+				double up_value = Math.floor(up.getAttributes().get(index).getValue()*100)/100;
+				double d_point = Math.floor(d*100)/100;
+				
+				if ( up_value == d_point ) { count++; }
+			}
+
+			loadMap.put(d, count);
+			
 		}
-		return count;
+
+		return loadMap;
 	}
 	
 	/* Splits region into *square root of n* MEE (mutually exclusive and exhaustive) regions, where n = number of machines.
@@ -38,27 +62,34 @@ public class HeuristicV2 {
 		
 		/* PART-1 Identify the quantile points */
 		
-		int index = 0; // attribute (axis)
-		double interval_size = 0.01;
-		int total_touches = uplist.size()+search_touches_counter(slist, interval_size, 1.0);
-		Map<Double, Double> quantiles = new TreeMap<Double, Double>(); // here we use TreeMap just to have the entries sorted by key
-		for (double i = interval_size; i < 1.0; i+=interval_size) {  // here we split the interval [0,1] into intervals of size 0.01
-			int upcount = 0, scount = 0;
-			for (Update u : uplist) 								// calculates update load in the interval [0,i]
-				if (u.getAttributes().get(index).getValue() <= i)
-					upcount++;
-			scount = search_touches_counter(slist, interval_size, i); // calculates search load in the interval [0,i]
-			int touches = upcount + scount;
-			double square_root = Math.sqrt(num_machines);
-			double quantile = 0.0;
-			for (int j = 1; j < square_root; j++)
-				if ((touches/(double)total_touches) >= j/square_root) { // checks whether i contains j/sqrt(num_machines) of all touches, with 1 <= j <= sqrt(num_machines) - 1
-					quantile = j/square_root;
-					if (!quantiles.containsKey(quantile)) {
-						System.out.println("Quantile: "+quantile+" i: "+i+" load: "+(touches/(double)total_touches));
-						quantiles.put(quantile, i); // here we have all the quantiles, which are the points where the hyperplanes will split the axis
+		Map<Double, Integer> loadMap = uploadAndSearchLoadCounter(uplist, slist);
+		Map<Double, Double> quantiles = new TreeMap<Double, Double>();
+		
+		int total_load = 0, n_regions = (int) Math.sqrt(num_machines), count = 0, index = 0;
+		double granularity = 0.01;
+		
+		// calculates total load
+		for (Map.Entry<Double, Integer> e : loadMap.entrySet()) { total_load += e.getValue(); }
+		
+		for (double d = 0.0; d <= 1.0; d += granularity) {
+			
+			count += loadMap.get(d);  // 'count' represents the total load until point 'd'
+			
+			double percent_load = count/(double)total_load;
+			
+			for (int i = n_regions-1; i > 0; i--) { // checks whether 'd' contains 'i/n_regions' of all load, with '1 <= i <= n_regions - 1'
+				
+				double quantile = i/(double)n_regions; 
+				
+				if ( percent_load >= quantile ) { // if the percent load until 'd' is greater or equal than 'quantile', 'd' is that 'quantile'
+					
+					if (!quantiles.containsKey(quantile) && !quantiles.containsValue(d)) {
+						System.out.println("Quantile: "+quantile+" d: "+d+" load: "+percent_load);
+						quantiles.put(quantile, d);   // here we have all the quantiles, which are the points where the hyperplanes will split the axis
+						break;
 					}
-				}				 
+				}
+			}
 		}
 		
 		/* PART-2 Split regions at quantile points */
@@ -69,9 +100,9 @@ public class HeuristicV2 {
 				
 		List<Region> newRegions = new ArrayList<Region>();
 		
-		int count = 1;
+		count = 1;
 		for (int v = 0; v <= values.size(); v++) {
-			Region newRegion = new Region("R"+count++, regions.get(0).getPairs());
+			Region newRegion = new Region("R"+count++, regions.get(index).getPairs());
 			if (v == values.size()) { newRegion.getPairs().get(index).setRange(values.get(v-1), null); }
 			else {
 				if (v == 0)

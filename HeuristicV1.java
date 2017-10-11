@@ -21,7 +21,7 @@ public class HeuristicV1 {
 		
 		long upload = 0, sload = 0, upsquare = 0, ssquare = 0;
 				
-		for (Region r : rlist) {
+		for (Region r : rlist) {			
 			upload += r.getUpdateLoad(uplist).size();
 			sload += r.getSearchLoad(slist).size();
 			upsquare += Math.pow(r.getUpdateLoad(uplist).size(), 2);

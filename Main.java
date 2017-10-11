@@ -1,5 +1,7 @@
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,19 +33,131 @@ public class Main {
 			for (int j = 1; j <= AttrNum; j++) {
 				double v1 = rnd.nextDouble();
 				double v2 = rnd.nextDouble();
-				double low, high;
-				if (v1 < v2) {
-					low = v1;
-					high = v2;
-				} else {
-					low = v2;
-					high = v1;
-				}
-				s.addPair("A"+j, new Range(low, high));
+				s.addPair("A"+j, new Range(v1, v2));
 			}
 			searches.add(s);
 		}
 		return searches;
+	}
+	
+	private static void generateSearchLoadFile(int AttrNum, int SNum, Random rnd) throws IOException {
+		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("search_load.txt")));
+		bw.write(""+AttrNum);
+		bw.write(" "+SNum);
+		for (int i = 0; i < SNum; i++) {
+			bw.write("\nS"+i);
+			for (int j = 1; j <= AttrNum; j++) {
+				double v1 = rnd.nextDouble();
+				double v2 = rnd.nextDouble();
+//				if (v1 > v2) {
+//					bw.write("\nA"+j);
+//					bw.write(" "+v1);
+//					bw.write(" "+1.0);
+//					bw.write("\nA"+j);
+//					bw.write(" "+0.0);
+//					bw.write(" "+v2);
+//				} else {
+					bw.write("\nA"+j);
+					bw.write(" "+v1);
+					bw.write(" "+v2);
+//				}
+			}
+		}
+		bw.close();
+	}
+	
+	private static void checkSearchLoadDistribution() throws IOException {
+		
+		Random rnd = new Random(100);
+		generateSearchLoadFile(1, 1000, rnd);
+		List<Search> slist = readSearchLoadFile();
+		
+		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("search_load_dist.txt")));
+		
+		for (double d = 0.0; d <= 1.0; d += 0.01) {
+			
+			int count = 0;
+			for (Search s : slist) {
+				double range_start = s.getPairs().get(0).getRange().getLow();
+				double range_end   = s.getPairs().get(0).getRange().getHigh();
+				
+				if (range_start > range_end) { // [a,b] ^ a > b --> [a,1.0] ^ [0.0,b] 
+										
+					if ( (d >= range_start && d <= 1.0) || (d >= 0.0 && d <= range_end) ) { count++; }
+					
+				} else {
+					
+					if (d >= range_start && d <= range_end) { count++; }
+					
+				}
+			}
+			
+			bw.write(d+",\t");
+			bw.write(count+"\n");
+						
+		}
+		
+		bw.close();
+		
+	}
+	
+	private static ArrayList<Search> readSearchLoadFile() throws IOException {
+		ArrayList<Search> searches = new ArrayList<Search>();
+		
+		BufferedReader br = new BufferedReader(new FileReader("search_load.txt"));
+		String[] firstLine = br.readLine().split(" ");
+		int attrNum = Integer.parseInt(firstLine[0]);
+		int SNum = Integer.parseInt(firstLine[1]);
+		
+		for (int i = 0; i < SNum; i++) {
+			Search s = new Search(br.readLine());
+			for (int j = 0; j < attrNum; j++) {
+				String[] attrLine = br.readLine().split(" ");
+				s.addPair(attrLine[0], new Range(Double.parseDouble(attrLine[1]), Double.parseDouble(attrLine[2])));
+			}
+			searches.add(s);
+		}
+		
+		br.close();
+		
+		return searches;
+	}
+	
+	private static void generateUpdateLoadFile(int AttrNum, int UpNum, Random rnd) throws IOException {
+		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("update_load.txt")));
+		bw.write(""+AttrNum);
+		bw.write(" "+UpNum);
+		for (int i = 0; i < UpNum; i++) {
+			bw.write("\nU"+i);
+			for (int j = 1; j <= AttrNum; j++) {
+				double v = rnd.nextDouble();
+				bw.write("\nA"+j);
+				bw.write(" "+v);
+			}
+		}
+		bw.close();
+	}
+	
+	private static ArrayList<Update> readUpdateLoadFile() throws IOException {
+		ArrayList<Update> updates = new ArrayList<Update>();
+		
+		BufferedReader br = new BufferedReader(new FileReader("update_load.txt"));
+		String[] firstLine = br.readLine().split(" ");
+		int attrNum = Integer.parseInt(firstLine[0]);
+		int upNum = Integer.parseInt(firstLine[1]);
+		
+		for (int i = 0; i < upNum; i++) {
+			Update up = new Update(br.readLine());
+			for (int j = 0; j < attrNum; j++) {
+				String[] attrLine = br.readLine().split(" ");
+				up.addAttr(attrLine[0], Double.parseDouble(attrLine[1]));
+			}
+			updates.add(up);
+		}
+		
+		br.close();
+		
+		return updates;
 	}
 	
 	public static Map<Integer, Double> calculateConfidenceInterval(Map<Integer, List<Integer>> load, Map<Integer, Double> mean) {
@@ -75,20 +189,23 @@ public class Main {
 	}
 	
 	public static void main(String[] args) {
-	
- /*
+
+	/*	
 		
 		Random rnd = new Random();
-		//rnd.setSeed(0);
+		rnd.setSeed(0);
 		
-		int num_attr = 3;
-		int num_mach = 16;
-		int num_samples = 1000;
+		int num_attr = 1;
+		int num_mach = 100;
+		int num_update_training_samples = 0;
+		int num_search_training_samples = 20;
+		int num_update_new_samples = 0;
+		int num_search_new_samples = 20;
 				
 		List<PairAttributeRange> pairs = new ArrayList<PairAttributeRange>();
 		pairs.add(new PairAttributeRange("A1", new Range(0.0, 1.0)));
-		pairs.add(new PairAttributeRange("A2", new Range(0.0, 1.0)));
-		pairs.add(new PairAttributeRange("A3", new Range(0.0, 1.0)));
+		//pairs.add(new PairAttributeRange("A2", new Range(0.0, 1.0)));
+		//pairs.add(new PairAttributeRange("A3", new Range(0.0, 1.0)));
 		
 		Region region = new Region("R1", pairs);		
 		
@@ -100,7 +217,7 @@ public class Main {
 		
 		// Generates update load
 		
-		ArrayList<Update> uplist = generateUpdateLoad(num_attr, num_samples, rnd);
+		ArrayList<Update> uplist = generateUpdateLoad(num_attr, num_update_training_samples, rnd);
 		
 		for (Update up : uplist) {
 			
@@ -113,7 +230,7 @@ public class Main {
 		
 		// Generates search load
 		
-		ArrayList<Search> slist = generateSearchLoad(num_attr, num_samples, rnd);
+		ArrayList<Search> slist = generateSearchLoad(num_attr, num_search_training_samples, rnd);
 		
 		for (Search s : slist) {
 			
@@ -136,8 +253,8 @@ public class Main {
 		try {
 			
 			// Generates new update & search loads
-			ArrayList<Update> newUplist = generateUpdateLoad(num_attr, 20, rnd);
-			ArrayList<Search> newSlist = generateSearchLoad(num_attr, 20, rnd);
+			ArrayList<Update> newUplist = generateUpdateLoad(num_attr, num_update_new_samples, rnd);
+			ArrayList<Search> newSlist = generateSearchLoad(num_attr, num_search_new_samples, rnd);
 						
 			fw = new FileWriter(output);
 			bw = new BufferedWriter(fw);
@@ -168,6 +285,8 @@ public class Main {
 			
 			double JFIndex = heuristic1.JFI(newUplist, newSlist, regions);
 			
+			int num_samples = num_update_training_samples + num_search_training_samples;
+			
 			bw.newLine();
 			bw.write("# of Samples\tJFI");
 			bw.newLine();
@@ -177,14 +296,10 @@ public class Main {
 		} catch (IOException e) { e.printStackTrace(); }
 		
 		finally { try { bw.close(); fw.close(); } catch (Exception e) {} }
-	
-	*/	
-		
+	*/
 		/* **** First Experiment: touches per region **** */
-
-		
-		Random rnd = new Random();
-		rnd.setSeed(0);
+	
+		Random rnd = new Random(0);
 		
 		int num_attr = 3;
 		int num_mach = 64;
@@ -303,19 +418,16 @@ public class Main {
 				}
 				
 				bw1.newLine();
-				bw1.write("JFI:\t"+JFI_avg);			
+				bw1.write("JFI:\t"+JFI_avg);				
 				
 			} catch (IOException e) { e.printStackTrace(); }
 			
 			finally { try { bw1.close(); fw1.close(); } catch (Exception e) {} }
 		
 		}
-	
 		
 		/* **** Second Experiment: JFI VS # of samples **** */
-
-	/*
-		
+	/*	
 		Random rnd = new Random();
 		rnd.setSeed(0);
 		
@@ -407,6 +519,8 @@ public class Main {
 		finally { try { bw2.close(); fw2.close(); } catch (Exception e) {} }
 	
 */
+		//	try { generateSearchLoadFile(1, 100000, new Random()); } catch (IOException e) {}
+		//	try { checkSearchLoadDistribution(); } catch (IOException e) {}
 		
 	}
 

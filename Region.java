@@ -28,11 +28,18 @@ public class Region {
 	
 	private boolean isTouch(Update update) {
 		boolean flag = true;
-		for (Attribute attr : update.getAttributes())
-			for (PairAttributeRange pair : pairs)
-				if (attr.getKey().equals(pair.getAttrkey()))
-					if (attr.getValue() < pair.getRange().getLow() || attr.getValue() > pair.getRange().getHigh())
+		for (Attribute attr : update.getAttributes()) {
+			String u_attr = attr.getKey();    // update attribute
+			double u_value = attr.getValue(); // update value
+			for (PairAttributeRange pair : pairs) {
+				String r_attr = pair.getAttrkey();         // region attribute
+				double r_start = pair.getRange().getLow(); // region range start
+				double r_end = pair.getRange().getHigh();  // region range end 
+				if (u_attr.equals(r_attr))
+					if (u_value < r_start || u_value > r_end)
 						flag = false;
+			}
+		}
 		if (flag)
 			this.update_load.add(update);
 		return flag;
@@ -40,11 +47,24 @@ public class Region {
 	
 	private boolean isTouch(Search search) {
 		boolean flag = true;
-		for (PairAttributeRange qpair : search.getPairs())
-			for (PairAttributeRange rpair : pairs)
-				if (qpair.getAttrkey().equals(rpair.getAttrkey()))
-					if (qpair.getRange().getLow() > rpair.getRange().getHigh() || qpair.getRange().getHigh() < rpair.getRange().getLow())
-						flag = false;
+		for (PairAttributeRange qpair : search.getPairs()) {
+			String s_attr = qpair.getAttrkey();         // search attribute
+			double s_start = qpair.getRange().getLow(); // search range start
+			double s_end = qpair.getRange().getHigh();  // search range end
+			for (PairAttributeRange rpair : pairs) {
+				String r_attr = rpair.getAttrkey();         // region attribute
+				double r_start = rpair.getRange().getLow(); // region range start
+				double r_end = rpair.getRange().getHigh();  // region range end
+				if (s_attr.equals(r_attr))
+					if (s_start > s_end) {		// trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
+						if (s_start > r_end && s_end < r_start)
+							flag = false;
+					} else {					// caso normal
+						if (s_start > r_end || s_end < r_start)
+							flag = false;
+					}
+			}
+		}
 		if (flag)
 			this.search_load.add(search);
 		return flag;
