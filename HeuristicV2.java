@@ -1,3 +1,5 @@
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,8 +43,9 @@ public class HeuristicV2 {
 			}
 			
 			for (Update up : uplist) {
-				double up_value = Math.floor(up.getAttributes().get(index).getValue()*100)/100;
-				double d_point = Math.floor(d*100)/100;
+				double up_value = up.getAttributes().get(index).getValue();
+				up_value = new BigDecimal(up_value).setScale(2, RoundingMode.HALF_UP).doubleValue(); // rounds 'up_value' to two decimal places
+				double d_point = new BigDecimal(d).setScale(2, RoundingMode.HALF_UP).doubleValue();  // rounds 'd' to two decimal places
 				
 				if ( up_value == d_point ) { count++; }
 			}
@@ -81,7 +84,7 @@ public class HeuristicV2 {
 				
 				double quantile = i/(double)n_regions; 
 				
-				if ( percent_load >= quantile ) { // if the percent load until 'd' is greater or equal than 'quantile', 'd' is that 'quantile'
+				if ( percent_load >= quantile ) { // if the percent load until 'd' is greater than or equal to 'quantile', 'd' is that 'quantile'
 					
 					if (!quantiles.containsKey(quantile) && !quantiles.containsValue(d)) {
 						System.out.println("Quantile: "+quantile+" d: "+d+" load: "+percent_load);

@@ -5,7 +5,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -298,7 +297,7 @@ public class Main {
 		finally { try { bw.close(); fw.close(); } catch (Exception e) {} }
 	*/
 		/* **** First Experiment: touches per region **** */
-	
+		
 		Random rnd = new Random(0);
 		
 		int num_attr = 3;
@@ -425,7 +424,7 @@ public class Main {
 			finally { try { bw1.close(); fw1.close(); } catch (Exception e) {} }
 		
 		}
-		
+				
 		/* **** Second Experiment: JFI VS # of samples **** */
 	/*	
 		Random rnd = new Random();
