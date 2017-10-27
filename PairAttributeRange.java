@@ -27,9 +27,9 @@ public class PairAttributeRange {
 	
 	public void setRange(Double low, Double high) {
 		if (low != null)
-			this.range.setLow(low);
+			range.setLow(low);
 		if (high != null)
-			this.range.setHigh(high);
+			range.setHigh(high);
 	}
 
 }

@@ -4,21 +4,21 @@ import java.util.List;
 
 public class Update {
 	
-	private String id;
+	private GUID guid;
 	private List<Attribute> attributes;
 	
-	public Update() {
-		this.id = null;
+	public Update(String guid) {
+		this.guid = new GUID(guid);
 		this.attributes = new ArrayList<Attribute>();
 	}
 	
-	public Update(String id) {
-		this.id = id;
+	public Update(GUID guid) {
+		this.guid = guid;
 		this.attributes = new ArrayList<Attribute>();
 	}
 	
-	public String getId() {
-		return this.id;
+	public GUID getGuid() {
+		return guid;
 	}
 	
 	public void addAttr(String key, double value) {
@@ -32,6 +32,7 @@ public class Update {
 	
 	public String toString() {
 		StringBuilder str = new StringBuilder("[");
+		str.append(guid+",");
 		for (Attribute attr : this.attributes) {
 			str.append("\n(");
 			str.append(attr.getKey());

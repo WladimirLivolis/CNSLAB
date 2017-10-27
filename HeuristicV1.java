@@ -3,6 +3,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 public class HeuristicV1 {
 	
@@ -17,7 +18,7 @@ public class HeuristicV1 {
 	}
 	
 	/* Returns the Jain's Fairness Index (JFI) given a list of regions as well as search & update loads. */
-	public double JFI(ArrayList<Update> uplist, ArrayList<Search> slist, List<Region> rlist) {
+	public double JFI(Queue<Update> uplist, Queue<Search> slist, List<Region> rlist) {
 		
 		long upload = 0, sload = 0, upsquare = 0, ssquare = 0;
 				
@@ -57,7 +58,7 @@ public class HeuristicV1 {
 	 * splitting the region into two new regions. Then, we calculate the JFI for this partitioning configuration and keep this information
 	 * until we know the JFI for every partitioning configuration. Finally, we stay with the partitioning configuration that maximizes
 	 * the JFI.*/
-	public List<Region> partition(ArrayList<Update> uplist, ArrayList<Search> slist) {
+	public List<Region> partition(Queue<Update> uplist, Queue<Search> slist) {
 		
 		double n = (double) num_machines;
 		int num_iterations = (int) Math.sqrt(n);

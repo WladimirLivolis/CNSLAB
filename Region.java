@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Queue;
 
 public class Region {
 	
@@ -8,6 +9,7 @@ public class Region {
 	private List<PairAttributeRange> pairs;
 	private List<Search> search_load;
 	private List<Update> update_load;
+	private List<GUID> GUIDs;
 	
 	public Region(String name, List<PairAttributeRange> pairs) {
 		this.name = name;
@@ -16,6 +18,7 @@ public class Region {
 			this.pairs.add(new PairAttributeRange(pair.getAttrkey(), new Range(pair.getRange().getLow(), pair.getRange().getHigh())));
 		this.search_load = new ArrayList<Search>();
 		this.update_load = new ArrayList<Update>();
+		this.GUIDs = new ArrayList<GUID>();
 	}
 	
 	public String getName() {
@@ -26,7 +29,7 @@ public class Region {
 		return Collections.unmodifiableList(this.pairs);
 	}
 	
-	private boolean isTouch(Update update) {
+	private boolean isInRegion(Update update) {
 		boolean flag = true;
 		for (Attribute attr : update.getAttributes()) {
 			String u_attr = attr.getKey();    // update attribute
@@ -40,12 +43,11 @@ public class Region {
 						flag = false;
 			}
 		}
-		if (flag)
-			this.update_load.add(update);
+		if (flag) { update_load.add(update); }
 		return flag;
 	}
 	
-	private boolean isTouch(Search search) {
+	private boolean isInRegion(Search search) {
 		boolean flag = true;
 		for (PairAttributeRange qpair : search.getPairs()) {
 			String s_attr = qpair.getAttrkey();         // search attribute
@@ -65,31 +67,113 @@ public class Region {
 					}
 			}
 		}
-		if (flag)
-			this.search_load.add(search);
+		if (flag) { search_load.add(search); }
 		return flag;
 	}
 	
-	public List<Update> getUpdateLoad(List<Update> uplist) {
-		this.update_load = new ArrayList<Update>();
+	public List<Update> getUpdateLoad(Queue<Update> uplist) {
+		update_load = new ArrayList<Update>();
 		for (Update up : uplist)
-			isTouch(up);
-		return Collections.unmodifiableList(this.update_load);
+			isInRegion(up);
+		return Collections.unmodifiableList(update_load);
 	}
 	
-	public List<Search> getSearchLoad(List<Search> slist) {
-		this.search_load = new ArrayList<Search>();
+	public List<Search> getSearchLoad(Queue<Search> slist) {
+		search_load = new ArrayList<Search>();
 		for (Search s : slist)
-			isTouch(s);
-		return Collections.unmodifiableList(this.search_load);
+			isInRegion(s);
+		return Collections.unmodifiableList(search_load);
+	}
+	
+	public int getUpdateTouches(Queue<Update> uplist) {
+		
+		int count = 0;
+		
+		for (Update up : uplist) {
+
+			GUID guid = up.getGuid();
+			boolean isInRegion = false;
+			
+			// Checks whether GUID is already in this region
+			for (Attribute attr : guid.getAttributes()) {
+				String guidAttrKey = attr.getKey();    
+				double guidAttrVal = attr.getValue(); 
+				for (PairAttributeRange pair : pairs) {
+					String regionAttrKey    = pair.getAttrkey();         
+					double regionRangeStart = pair.getRange().getLow(); 
+					double regionRangeEnd   = pair.getRange().getHigh(); 
+					if (guidAttrKey.equals(regionAttrKey)) {
+						if (guidAttrVal >= regionRangeStart && guidAttrVal <= regionRangeEnd) {
+							isInRegion = true;
+							count++;
+							if (GUIDs.contains(guid)) { GUIDs.remove(guid); }
+						}
+					}
+				}
+			}
+			
+			// Checks whether this update moves a GUID to this region
+			for (Attribute attr : up.getAttributes()) {
+				String updateAttrKey = attr.getKey();
+				double updateAttrVal = attr.getValue();
+				for (PairAttributeRange pair : pairs) {
+					String regionAttrKey = pair.getAttrkey();         
+					double regionRangeStart = pair.getRange().getLow(); 
+					double regionRangeEnd = pair.getRange().getHigh();
+					if (updateAttrKey.equals(regionAttrKey)) {
+						if (updateAttrVal >= regionRangeStart && updateAttrVal <= regionRangeEnd) {
+							guid.set_attribute(updateAttrKey, updateAttrVal);
+							GUIDs.add(guid);
+							if (!isInRegion) { count++; }
+						}
+					}
+				}
+			}
+			
+		}
+		
+		return count;
+	}
+	
+	public int getSearchTouches(Queue<Search> slist) {
+		
+		int count = 0;
+		
+		for (Search s : slist) {
+			boolean isInRegion = false;
+			for (PairAttributeRange searchPair : s.getPairs()) {
+				String searchAttrKey    = searchPair.getAttrkey();
+				double searchRangeStart = searchPair.getRange().getLow();
+				double searchRangeEnd   = searchPair.getRange().getHigh();
+				for (PairAttributeRange regionPair : pairs) {
+					String regionAttrKey    = regionPair.getAttrkey();
+					double regionRangeStart = regionPair.getRange().getLow();
+					double regionRangeEnd   = regionPair.getRange().getHigh();
+					if (searchAttrKey.equals(regionAttrKey)) {
+						if (searchRangeStart > searchRangeEnd) {
+							if (searchRangeStart <= regionRangeEnd || searchRangeEnd >= regionRangeStart) { isInRegion = true; }
+						} else {
+							if (searchRangeStart <= regionRangeEnd && searchRangeEnd >= regionRangeStart) { isInRegion = true; }
+						}
+						if (isInRegion) { count += GUIDs.size(); }
+					}
+				}
+			}
+		}
+		
+		return count;
 	}
 	
 	public List<Update> getUpdateLoad() {
-		return Collections.unmodifiableList(this.update_load);
+		return Collections.unmodifiableList(update_load);
 	}
 	
 	public List<Search> getSearchLoad() {
-		return Collections.unmodifiableList(this.search_load);
+		return Collections.unmodifiableList(search_load);
+	}
+	
+	public List<GUID> getGUIDs() {
+		return Collections.unmodifiableList(GUIDs);
 	}
 
 }

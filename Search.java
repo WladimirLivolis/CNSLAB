@@ -4,21 +4,10 @@ import java.util.List;
 
 public class Search {
 	
-	private String id;
 	private List<PairAttributeRange> pairs;
 	
 	public Search() {
-		this.id = null;
-		this.pairs = new ArrayList<PairAttributeRange>();
-	}
-	
-	public Search(String id) {
-		this.id = id;
-		this.pairs = new ArrayList<PairAttributeRange>();
-	}
-	
-	public String getId() {
-		return id;
+		pairs = new ArrayList<PairAttributeRange>();
 	}
 	
 	public void addPair(String attrkey, Range range) {
@@ -32,12 +21,12 @@ public class Search {
 	}
 	
 	public List<PairAttributeRange> getPairs() {
-		return Collections.unmodifiableList(this.pairs);
+		return Collections.unmodifiableList(pairs);
 	}
 	
 	public String toString() {
 		StringBuilder str = new StringBuilder("[");
-		for (PairAttributeRange pair : this.pairs) {
+		for (PairAttributeRange pair : pairs) {
 			str.append("\n(");
 			str.append(pair.getAttrkey());
 			str.append(",[");

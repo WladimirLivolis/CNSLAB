@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.TreeMap;
 
 public class HeuristicV2 {
@@ -16,7 +17,7 @@ public class HeuristicV2 {
 		this.regions = regions;
 	}
 	
-	private Map<Double, Integer> uploadAndSearchLoadCounter(ArrayList<Update> uplist, ArrayList<Search> slist) {
+	private Map<Double, Integer> uploadAndSearchLoadCounter(Queue<Update> uplist, Queue<Search> slist) {
 		
 		Map<Double, Integer> loadMap = new TreeMap<Double, Integer>();
 		
@@ -61,7 +62,7 @@ public class HeuristicV2 {
 	 * 
 	 * Given update & search loads, we find the quantile points regarding only one attribute axis.
 	 * Then, we split the existing region at its *square root of n* - 1 quantile points, generating *square root of n* new regions. */
-	public List<Region> partition(ArrayList<Update> uplist, ArrayList<Search> slist) {
+	public List<Region> partition(Queue<Update> uplist, Queue<Search> slist) {
 		
 		/* PART-1 Identify the quantile points */
 		
