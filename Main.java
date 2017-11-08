@@ -237,7 +237,7 @@ public class Main {
 				regions = heuristic1.partition(uplist, slist);
 			} else {
 				fileName = "heuristic2.txt";
-				regions = heuristic2.partition(uplist, slist);
+				regions = heuristic2.partition(GUIDs, uplist, slist);
 			}
 			
 			System.out.println(heuristic1.JFI(uplist, slist, regions)+"\n");
@@ -258,7 +258,7 @@ public class Main {
 				// Calculates JFI
 				JFIs.add(heuristic1.JFI(newUplist, newSlist, regions));
 	
-				// Checks touches
+				// Checks number of operations per region
 				for (Region r : regions) {
 					
 					int index = regions.indexOf(r)+1;
@@ -266,14 +266,14 @@ public class Main {
 					int myUpdateLoad = r.getUpdateLoad(newUplist).size();
 					int mySearchLoad = r.getSearchLoad(newSlist).size();
 									
-					int touches = myUpdateLoad+mySearchLoad;
+					int totalLoad = myUpdateLoad+mySearchLoad;
 					
 					if (!realLoad.containsKey(index)) {
 						ArrayList<Integer> load = new ArrayList<Integer>(num_experiments);
-						load.add(touches);
+						load.add(totalLoad);
 						realLoad.put(index, load);
 					} else {
-						realLoad.get(index).add(touches);
+						realLoad.get(index).add(totalLoad);
 					}
 					
 				}
@@ -284,14 +284,14 @@ public class Main {
 	
 			for (Map.Entry<Integer, List<Integer>> e : realLoad.entrySet()) {
 				
-				List<Integer> touches = e.getValue();
+				List<Integer> load = e.getValue();
 				
 				Integer sum = 0;
-				for (Integer touch : touches) {
-					sum += touch;
+				for (Integer l : load) {
+					sum += l;
 				}
 				
-				double avg = sum.doubleValue() / touches.size();
+				double avg = sum.doubleValue() / load.size();
 				meanLoad.put(e.getKey(), avg);
 				
 			}

@@ -78,10 +78,18 @@ public class Region {
 		return Collections.unmodifiableList(update_load);
 	}
 	
+	public List<Update> getUpdateLoad() {
+		return Collections.unmodifiableList(update_load);
+	}
+	
 	public List<Search> getSearchLoad(Queue<Search> slist) {
 		search_load = new ArrayList<Search>();
 		for (Search s : slist)
 			isInRegion(s);
+		return Collections.unmodifiableList(search_load);
+	}
+	
+	public List<Search> getSearchLoad() {
 		return Collections.unmodifiableList(search_load);
 	}
 	
@@ -94,7 +102,7 @@ public class Region {
 			GUID guid = up.getGuid();
 			boolean isInRegion = false;
 			
-			// Checks whether GUID is already in this region
+			// Checks whether this update's GUID is already in this region
 			for (Attribute attr : guid.getAttributes()) {
 				String guidAttrKey = attr.getKey();    
 				double guidAttrVal = attr.getValue(); 
@@ -162,14 +170,6 @@ public class Region {
 		}
 		
 		return count;
-	}
-	
-	public List<Update> getUpdateLoad() {
-		return Collections.unmodifiableList(update_load);
-	}
-	
-	public List<Search> getSearchLoad() {
-		return Collections.unmodifiableList(search_load);
 	}
 	
 	public List<GUID> getGUIDs() {
