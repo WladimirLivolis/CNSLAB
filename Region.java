@@ -22,75 +22,19 @@ public class Region {
 	}
 	
 	public String getName() {
-		return this.name;
+		return name;
 	}
 	
 	public List<PairAttributeRange> getPairs() {
-		return Collections.unmodifiableList(this.pairs);
-	}
-	
-	private boolean isInRegion(Update update) {
-		boolean flag = true;
-		for (Attribute attr : update.getAttributes()) {
-			String u_attr = attr.getKey();    // update attribute
-			double u_value = attr.getValue(); // update value
-			for (PairAttributeRange pair : pairs) {
-				String r_attr = pair.getAttrkey();         // region attribute
-				double r_start = pair.getRange().getLow(); // region range start
-				double r_end = pair.getRange().getHigh();  // region range end 
-				if (u_attr.equals(r_attr))
-					if (u_value < r_start || u_value > r_end)
-						flag = false;
-			}
-		}
-		if (flag) { update_load.add(update); }
-		return flag;
-	}
-	
-	private boolean isInRegion(Search search) {
-		boolean flag = true;
-		for (PairAttributeRange qpair : search.getPairs()) {
-			String s_attr = qpair.getAttrkey();         // search attribute
-			double s_start = qpair.getRange().getLow(); // search range start
-			double s_end = qpair.getRange().getHigh();  // search range end
-			for (PairAttributeRange rpair : pairs) {
-				String r_attr = rpair.getAttrkey();         // region attribute
-				double r_start = rpair.getRange().getLow(); // region range start
-				double r_end = rpair.getRange().getHigh();  // region range end
-				if (s_attr.equals(r_attr))
-					if (s_start > s_end) {		// trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
-						if (s_start > r_end && s_end < r_start)
-							flag = false;
-					} else {					// caso normal
-						if (s_start > r_end || s_end < r_start)
-							flag = false;
-					}
-			}
-		}
-		if (flag) { search_load.add(search); }
-		return flag;
-	}
-	
-	public List<Update> getUpdateLoad(Queue<Update> uplist) {
-		update_load = new ArrayList<Update>();
-		for (Update up : uplist)
-			isInRegion(up);
-		return Collections.unmodifiableList(update_load);
+		return Collections.unmodifiableList(pairs);
 	}
 	
 	public List<Update> getUpdateLoad() {
-		return Collections.unmodifiableList(update_load);
-	}
-	
-	public List<Search> getSearchLoad(Queue<Search> slist) {
-		search_load = new ArrayList<Search>();
-		for (Search s : slist)
-			isInRegion(s);
-		return Collections.unmodifiableList(search_load);
+		return update_load;
 	}
 	
 	public List<Search> getSearchLoad() {
-		return Collections.unmodifiableList(search_load);
+		return search_load;
 	}
 	
 	public int getUpdateTouches(Queue<Update> uplist) {

@@ -1,11 +1,8 @@
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -13,161 +10,6 @@ import java.util.Random;
 import java.util.TreeMap;
 
 public class Main {
-	
-	private static List<GUID> generateGUIDs(int qty, int AttrNum, Random rnd) {
-		List<GUID> GUIDs = new ArrayList<GUID>(qty);
-		for (int i = 0; i < qty; i++) {
-			GUID guid = new GUID("GUID"+i);
-			for (int j = 0; j < AttrNum; j++) {
-				double v = rnd.nextDouble();
-				guid.set_attribute("A"+j, v);
-			}
-			GUIDs.add(guid);
-		}
-		return GUIDs;
-	}
-	
-	private static Queue<Update> generateUpdateLoad(int AttrNum, int UpNum, List<GUID> GUIDs, Random rnd) {
-		Queue<Update> updates = new LinkedList<Update>();
-		for (int i = 0; i < UpNum; i++) {
-			GUID guid = GUIDs.get(rnd.nextInt(GUIDs.size())); //pick one of the GUIDs already created
-			Update up = new Update(guid);
-			for (int j = 1; j <= AttrNum; j++) {
-				double v = rnd.nextDouble();
-				up.addAttr("A"+j, v);
-			}
-			updates.add(up);
-		}
-		return updates;
-	}
-	
-	private static Queue<Search> generateSearchLoad(int AttrNum, int SNum, Random rnd) {
-		Queue<Search> searches = new LinkedList<Search>();
-		for (int i = 0; i < SNum; i++) {
-			Search s = new Search();
-			for (int j = 1; j <= AttrNum; j++) {
-				double v1 = rnd.nextDouble();
-				double v2 = rnd.nextDouble();
-				s.addPair("A"+j, new Range(v1, v2));
-			}
-			searches.add(s);
-		}
-		return searches;
-	}
-	
-//	private static void generateSearchLoadFile(int AttrNum, int SNum, Random rnd) throws IOException {
-//		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("search_load.txt")));
-//		bw.write(""+AttrNum);
-//		bw.write(" "+SNum);
-//		for (int i = 0; i < SNum; i++) {
-//			bw.write("\n/");
-//			for (int j = 1; j <= AttrNum; j++) {
-//				double v1 = rnd.nextDouble();
-//				double v2 = rnd.nextDouble();
-//				bw.write("\nA"+j);
-//				bw.write(" "+v1);
-//				bw.write(" "+v2);
-//			}
-//		}
-//		bw.close();
-//	}
-//	
-//	private static ArrayList<Search> readSearchLoadFile() throws IOException {
-//		ArrayList<Search> searches = new ArrayList<Search>();
-//		
-//		BufferedReader br = new BufferedReader(new FileReader("search_load.txt"));
-//		String[] firstLine = br.readLine().split(" ");
-//		int attrNum = Integer.parseInt(firstLine[0]);
-//		int SNum = Integer.parseInt(firstLine[1]);
-//		
-//		for (int i = 0; i < SNum; i++) {
-//			br.readLine();
-//			Search s = new Search();
-//			for (int j = 0; j < attrNum; j++) {
-//				String[] attrLine = br.readLine().split(" ");
-//				s.addPair(attrLine[0], new Range(Double.parseDouble(attrLine[1]), Double.parseDouble(attrLine[2])));
-//			}
-//			searches.add(s);
-//		}
-//		
-//		br.close();
-//		
-//		return searches;
-//	}
-//	
-//	private static void generateUpdateLoadFile(int AttrNum, int UpNum, Random rnd) throws IOException {
-//		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("update_load.txt")));
-//		bw.write(""+AttrNum);
-//		bw.write(" "+UpNum);
-//		for (int i = 0; i < UpNum; i++) {
-//			bw.write("\n/");
-//			bw.write("\nGUID"+i);
-//			for (int j = 1; j <= AttrNum; j++) {
-//				double v = rnd.nextDouble();
-//				bw.write("\nA"+j);
-//				bw.write(" "+v);
-//			}
-//		}
-//		bw.close();
-//	}
-//	
-//	private static ArrayList<Update> readUpdateLoadFile() throws IOException {
-//		ArrayList<Update> updates = new ArrayList<Update>();
-//		
-//		BufferedReader br = new BufferedReader(new FileReader("update_load.txt"));
-//		String[] firstLine = br.readLine().split(" ");
-//		int attrNum = Integer.parseInt(firstLine[0]);
-//		int upNum = Integer.parseInt(firstLine[1]);
-//		
-//		for (int i = 0; i < upNum; i++) {
-//			br.readLine();
-//			Update up = new Update(br.readLine());
-//			for (int j = 0; j < attrNum; j++) {
-//				String[] attrLine = br.readLine().split(" ");
-//				up.addAttr(attrLine[0], Double.parseDouble(attrLine[1]));
-//			}
-//			updates.add(up);
-//		}
-//		
-//		br.close();
-//		
-//		return updates;
-//	}
-	
-//	private static void checkSearchLoadDistribution() throws IOException {
-//
-//		Random rnd = new Random(100);
-//		generateSearchLoadFile(1, 1000, rnd);
-//		List<Search> slist = readSearchLoadFile();
-//
-//		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("search_load_dist.txt")));
-//
-//		for (double d = 0.0; d <= 1.0; d += 0.01) {
-//
-//			int count = 0;
-//			for (Search s : slist) {
-//				double range_start = s.getPairs().get(0).getRange().getLow();
-//				double range_end   = s.getPairs().get(0).getRange().getHigh();
-//
-//				if (range_start > range_end) { // [a,b] ^ a > b --> [a,1.0] ^ [0.0,b] 
-//
-//					if ( (d >= range_start && d <= 1.0) || (d >= 0.0 && d <= range_end) ) { count++; }
-//
-//				} else {
-//
-//					if (d >= range_start && d <= range_end) { count++; }
-//
-//				}
-//			}
-//
-//			bw.write(d+",\t");
-//			bw.write(count+"\n");
-//
-//		}
-//
-//		bw.close();
-//
-//	}
 	
 	public static Map<Integer, Double> calculateConfidenceInterval(Map<Integer, List<Integer>> load, Map<Integer, Double> mean) {
 		
@@ -199,7 +41,7 @@ public class Main {
 	
 	public static void main(String[] args) {
 		
-		Random rnd = new Random(0);
+		Random rnd = new Random();
 		
 		int num_attr = 3;
 		int num_mach = 64;
@@ -224,9 +66,9 @@ public class Main {
 		HeuristicV2 heuristic2 = new HeuristicV2(num_mach, regions);
 		
 		// Generates update & search loads for training
-		List<GUID> GUIDs     = generateGUIDs(num_GUIDs, num_attr, rnd); 
-		Queue<Update> uplist = generateUpdateLoad(num_attr, num_update_training_samples, GUIDs, rnd);
-		Queue<Search> slist  = generateSearchLoad(num_attr, num_search_training_samples, rnd);
+		List<GUID> GUIDs     = Utilities.generateGUIDs(num_GUIDs, num_attr, rnd); 
+		Queue<Update> uplist = Utilities.generateUpdateLoad(num_attr, num_update_training_samples, GUIDs, rnd);
+		Queue<Search> slist  = Utilities.generateSearchLoad(num_attr, num_search_training_samples, rnd);
 		
 		for (int h = 1; h <= 2; h++) {
 			
@@ -251,20 +93,23 @@ public class Main {
 				rnd = new Random(i);
 				
 				// Generates new update & search loads
-				List<GUID> newGUIDs     = generateGUIDs(num_GUIDs, num_attr, rnd); 
-				Queue<Update> newUplist = generateUpdateLoad(num_attr, num_update_new_samples, newGUIDs, rnd);
-				Queue<Search> newSlist  = generateSearchLoad(num_attr, num_search_new_samples, rnd);
+				List<GUID> newGUIDs     = Utilities.generateGUIDs(num_GUIDs, num_attr, rnd); 
+				Queue<Update> newUplist = Utilities.generateUpdateLoad(num_attr, num_update_new_samples, newGUIDs, rnd);
+				Queue<Search> newSlist  = Utilities.generateSearchLoad(num_attr, num_search_new_samples, rnd);
 				
 				// Calculates JFI
 				JFIs.add(heuristic1.JFI(newUplist, newSlist, regions));
 	
 				// Checks number of operations per region
+				Utilities.checkSearchLoadPerRegion(regions, newSlist);
+				Utilities.checkUpdateLoadPerRegion(regions, newUplist);
+				
 				for (Region r : regions) {
 					
 					int index = regions.indexOf(r)+1;
 					
-					int myUpdateLoad = r.getUpdateLoad(newUplist).size();
-					int mySearchLoad = r.getSearchLoad(newSlist).size();
+					int myUpdateLoad = r.getUpdateLoad().size();
+					int mySearchLoad = r.getSearchLoad().size();
 									
 					int totalLoad = myUpdateLoad+mySearchLoad;
 					

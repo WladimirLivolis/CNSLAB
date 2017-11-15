@@ -21,12 +21,15 @@ public class HeuristicV1 {
 	public double JFI(Queue<Update> uplist, Queue<Search> slist, List<Region> rlist) {
 		
 		long upload = 0, sload = 0, upsquare = 0, ssquare = 0;
-				
+		
+		Utilities.checkUpdateLoadPerRegion(rlist, uplist);
+		Utilities.checkSearchLoadPerRegion(rlist, slist);
+		
 		for (Region r : rlist) {			
-			upload += r.getUpdateLoad(uplist).size();
-			sload += r.getSearchLoad(slist).size();
-			upsquare += Math.pow(r.getUpdateLoad(uplist).size(), 2);
-			ssquare += Math.pow(r.getSearchLoad(slist).size(), 2);
+			upload += r.getUpdateLoad().size();
+			sload += r.getSearchLoad().size();
+			upsquare += Math.pow(r.getUpdateLoad().size(), 2);
+			ssquare += Math.pow(r.getSearchLoad().size(), 2);
 		}
 		
 		double JU = 0.0, JS = 0.0;

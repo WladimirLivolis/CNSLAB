@@ -1,5 +1,3 @@
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -17,48 +15,7 @@ public class HeuristicV2 {
 		this.regions = regions;
 	}
 	
-//	private Map<Double, Integer> uploadAndSearchLoadCounter(Queue<Update> uplist, Queue<Search> slist) {
-//		
-//		Map<Double, Integer> loadMap = new TreeMap<Double, Integer>();
-//		
-//		double granularity = 0.01;
-//		int index = 0; // attribute (axis)
-//		
-//		for (double d = 0.0; d <= 1.0; d += granularity) {
-//
-//			int count = 0;
-//			
-//			for (Search s : slist) {				
-//				double range_start = s.getPairs().get(index).getRange().getLow();
-//				double range_end   = s.getPairs().get(index).getRange().getHigh();
-//
-//				if (range_start > range_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
-//
-//					if ( (d >= range_start && d <= 1.0) || (d >= 0.0 && d <= range_end) ) { count++; }
-//
-//				} else {
-//
-//					if (d >= range_start && d <= range_end) { count++; }
-//
-//				}
-//			}
-//			
-//			for (Update up : uplist) {
-//				double up_value = up.getAttributes().get(index).getValue();
-//				up_value = new BigDecimal(up_value).setScale(2, RoundingMode.HALF_UP).doubleValue(); // rounds 'up_value' to two decimal places
-//				double d_point = new BigDecimal(d).setScale(2, RoundingMode.HALF_UP).doubleValue();  // rounds 'd' to two decimal places
-//				
-//				if ( up_value == d_point ) { count++; }
-//			}
-//
-//			loadMap.put(d, count);
-//			
-//		}
-//
-//		return loadMap;
-//	}
-	
-	private Map<Double, Integer> uploadAndSearchTouchCounter(List<GUID> GUIDs, Queue<Update> uplist, Queue<Search> slist) {
+	private Map<Double, Integer> updateAndSearchTouchCounter(List<GUID> GUIDs, Queue<Update> uplist, Queue<Search> slist) {
 		
 		Map<Double, Integer> touchesMap = new TreeMap<Double, Integer>();
 		Map<Double, List<GUID>> guidlist = new TreeMap<Double, List<GUID>>();
@@ -69,16 +26,16 @@ public class HeuristicV2 {
 		for (double d = 0.0; d <= 1.0; d += granularity) {
 			
 			int count = 0;
-			double d_point = new BigDecimal(d).setScale(2, RoundingMode.HALF_UP).doubleValue();  // rounds 'd' to two decimal places
-			guidlist.put(d_point, new ArrayList<GUID>());
+			guidlist.put(d, new ArrayList<GUID>());
 
 			for (GUID guid : GUIDs) {
 				
 				double guid_attr_val = guid.getAttributes().get(index).getValue();
-				guid_attr_val = new BigDecimal(guid_attr_val).setScale(2, RoundingMode.HALF_UP).doubleValue();
 				
-				if ( guid_attr_val == d_point ) { 
-					guidlist.get(d_point).add(guid);
+				boolean guid_at_d = ( guid_attr_val >= d && guid_attr_val < d+granularity );
+				
+				if ( guid_at_d ) { 
+					guidlist.get(d).add(guid);
 				}
 				
 			}
@@ -88,21 +45,47 @@ public class HeuristicV2 {
 				GUID up_guid = up.getGuid();
 				double guid_attr_val = up_guid.getAttributes().get(index).getValue();
 				double up_attr_val = up.getAttributes().get(index).getValue();
-				String up_attr_key = up.getAttributes().get(index).getKey();
-				guid_attr_val = new BigDecimal(guid_attr_val).setScale(2, RoundingMode.HALF_UP).doubleValue();
-				up_attr_val = new BigDecimal(up_attr_val).setScale(2, RoundingMode.HALF_UP).doubleValue();
 				
-				// if guid is at point 'd' and its going to move to another point
-				if ( guid_attr_val == d_point && up_attr_val != d_point) {
-					guidlist.get(d_point).remove(up_guid); // remove guid from this point
+				boolean guid_at_d   = ( guid_attr_val >= d && guid_attr_val < d+granularity );
+				boolean moving_to_d = ( up_attr_val >= d && up_attr_val < d+granularity );
+				
+				// CASE I: if guid is at point 'd' and its going to move to another point
+				if ( guid_at_d && !moving_to_d ) {
+					guidlist.get(d).remove(up_guid); // remove guid from this point
 					count++; 
 				}
 				
-				// if guid came from another point to 'd'
-				if ( guid_attr_val != d_point && up_attr_val == d_point) {
-					guidlist.get(d_point).add(up_guid); // add guid to new point
-					up_guid.set_attribute(up_attr_key, up_attr_val);
+				// CASE II: if guid came from another point to 'd'
+				if ( !guid_at_d && moving_to_d ) {
+					guidlist.get(d).add(up_guid); // add guid to new point
+					for (Attribute attr : up.getAttributes()) { 
+						String key = attr.getKey();
+						double val = attr.getValue();
+						up_guid.set_attribute(key, val); // update guid attributes with values from update
+					}
 					count++; 
+				}
+				
+				// CASE III:
+				// if guid is at this point 'd' and this update doesn't move it to another point
+				// we check whether this update modify any other attribute value
+				if ( guid_at_d && moving_to_d ) { 
+					boolean flag = false;
+					for (Attribute up_attr : up.getAttributes()) { // iterate over update attributes
+						String up_key = up_attr.getKey();
+						double up_val = up_attr.getValue();
+						for (Attribute g_attr : up_guid.getAttributes()) { // iterate over guid attributes
+							String guid_key = g_attr.getKey();
+							double guid_val = g_attr.getValue();
+							if (guid_key.equals(up_key)) { // if we are dealing with same attribute
+								if (up_val != guid_val) {  // and this update is modifying its value
+									up_guid.set_attribute(up_key, up_val);
+									flag = true;
+								}
+							}
+						}
+					}
+					if (flag) { count++; }
 				}
 				
 			}
@@ -115,12 +98,12 @@ public class HeuristicV2 {
 				if (range_start > range_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
 					
 					if ( (d >= range_start && d <= 1.0) || (d >= 0.0 && d <= range_end) ) { 
-						count += guidlist.get(d_point).size(); 
+						count += guidlist.get(d).size(); 
 					}
 					
 				} else {
 					if (d >= range_start && d <= range_end) { 
-						count += guidlist.get(d_point).size(); 
+						count += guidlist.get(d).size(); 
 					}
 				}
 				
@@ -143,7 +126,7 @@ public class HeuristicV2 {
 		
 		/* PART-1 Identify the quantile points */
 		
-		Map<Double, Integer> touchesMap = uploadAndSearchTouchCounter(GUIDs, uplist, slist);
+		Map<Double, Integer> touchesMap = updateAndSearchTouchCounter(GUIDs, uplist, slist);
 		Map<Double, Double> quantiles = new TreeMap<Double, Double>();
 		
 		int total_load = 0, n_regions = (int) Math.sqrt(num_machines), count = 0, index = 0;
