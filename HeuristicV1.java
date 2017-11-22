@@ -18,12 +18,11 @@ public class HeuristicV1 {
 	}
 	
 	/* Returns the Jain's Fairness Index (JFI) given a list of regions as well as search & update loads. */
-	public double JFI(Queue<Update> uplist, Queue<Search> slist, List<Region> rlist) {
+	public double JFI(Queue<Operation> oplist, List<Region> rlist) {
 		
 		long upload = 0, sload = 0, upsquare = 0, ssquare = 0;
 		
-		Utilities.checkUpdateLoadPerRegion(rlist, uplist);
-		Utilities.checkSearchLoadPerRegion(rlist, slist);
+		Utilities.checkLoadPerRegion(rlist, oplist);
 		
 		for (Region r : rlist) {			
 			upload += r.getUpdateLoad().size();
@@ -61,7 +60,7 @@ public class HeuristicV1 {
 	 * splitting the region into two new regions. Then, we calculate the JFI for this partitioning configuration and keep this information
 	 * until we know the JFI for every partitioning configuration. Finally, we stay with the partitioning configuration that maximizes
 	 * the JFI.*/
-	public List<Region> partition(Queue<Update> uplist, Queue<Search> slist) {
+	public List<Region> partition(Queue<Operation> oplist) {
 		
 		double n = (double) num_machines;
 		int num_iterations = (int) Math.sqrt(n);
@@ -101,7 +100,7 @@ public class HeuristicV1 {
 						newRegions.add(newRegion2);	
 						
 						// Calculates JFI index
-						double jfindex = JFI(uplist, slist, newRegions);
+						double jfindex = JFI(oplist, newRegions);
 						
 						// If JFIndex is the best so far, then we keep it
 						if (jfindex > bestJFI) {

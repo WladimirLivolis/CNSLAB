@@ -2,7 +2,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class Search {
+public class Search implements Operation {
 	
 	private List<PairAttributeRange> pairs;
 	

@@ -2,7 +2,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class Update {
+public class Update implements Operation{
 	
 	private GUID guid;
 	private List<Attribute> attributes;

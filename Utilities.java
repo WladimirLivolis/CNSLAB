@@ -48,136 +48,84 @@ public class Utilities {
 		}
 		return searches;
 	}
-
-	public static void checkUpdateLoadPerRegion(List<Region> regions, Queue<Update> uplist) {
+	
+	public static void checkLoadPerRegion(List<Region> regions, Queue<Operation> oplist) {
 		
-		clear_update_load(regions);
+		clear_regions_load(regions);
 		
-		for (Update up : uplist) { // iterate over updates
+		for (Operation op : oplist) {
+			
+			if (op instanceof Update) { checkUpdateLoadPerRegion(regions, (Update)op); }
+			
+			if (op instanceof Search) {	checkSearchLoadPerRegion(regions, (Search)op); }
+			
+		}
+		
+	}
 
-			for (Region r : regions) { // iterate over regions
-				
-				// I) Checks whether this update is in this region regarding its attribute
-				
-				boolean flag_attr = true;
+	private static void checkUpdateLoadPerRegion(List<Region> regions, Update up) {
 
-				for (Attribute attr : up.getAttributes()) { // iterate over this update attributes
+		for (Region r : regions) { // iterate over regions
 
-					String up_attr = attr.getKey();   // update attribute
-					double up_val  = attr.getValue(); // update value
+			// I) Checks whether this update is in this region regarding its attribute
 
-					for (PairAttributeRange pair : r.getPairs()) { // iterate over this region pairs
+			boolean flag_attr = true;
 
-						String r_attr  = pair.getAttrkey();         // region attribute
-						double r_start = pair.getRange().getLow();  // region range start
-						double r_end   = pair.getRange().getHigh(); // region range end
+			for (Attribute attr : up.getAttributes()) { // iterate over this update attributes
 
-						if (up_attr.equals(r_attr)) { // if we are dealing with same attribute
+				String up_attr = attr.getKey();   // update attribute
+				double up_val  = attr.getValue(); // update value
 
-							if (up_val < r_start || up_val > r_end) { // check whether update value is inside this region range
-								flag_attr = false;
-							}
+				for (PairAttributeRange pair : r.getPairs()) { // iterate over this region pairs
 
+					String r_attr  = pair.getAttrkey();         // region attribute
+					double r_start = pair.getRange().getLow();  // region range start
+					double r_end   = pair.getRange().getHigh(); // region range end
+
+					if (up_attr.equals(r_attr)) { // if we are dealing with same attribute
+
+						if (up_val < r_start || up_val > r_end) { // check whether update value is inside this region range
+							flag_attr = false;
 						}
 
 					}
 
 				}
 
-				// II) Now checks whether this update is in this region regarding its guid
-				
-				boolean flag_guid = true;
-
-				GUID guid = up.getGuid();
-
-				for (Attribute attr : guid.getAttributes()) { // iterate over this guid attributes
-
-					String guid_attr = attr.getKey();   // guid attribute
-					double guid_val  = attr.getValue(); // guid value
-
-					for (PairAttributeRange pair : r.getPairs()) { // iterate over this region pairs
-
-						String r_attr  = pair.getAttrkey();         // region attribute
-						double r_start = pair.getRange().getLow();  // region range start
-						double r_end   = pair.getRange().getHigh(); // region range end
-
-						if (guid_attr.equals(r_attr)) { // if we are dealing with same attribute
-
-							if (guid_val < r_start || guid_val > r_end) { // check whether guid value is inside this region range
-								flag_guid = false;
-							}
-							
-						}
-
-					}
-
-				}
-				
-				if (flag_attr || flag_guid) {
-					
-					r.getUpdateLoad().add(up);
-
-				}
-				
 			}
 
-		}
+			// II) Now checks whether this update is in this region regarding its guid
 
-	}
-	
-	public static void checkSearchLoadPerRegion(List<Region> regions, Queue<Search> slist) {
-		
-		clear_search_load(regions);
+			boolean flag_guid = true;
 
-		for (Search s : slist) { // iterate over searches
+			GUID guid = up.getGuid();
 
-			for (Region r : regions) { // iterate over regions
+			for (Attribute attr : guid.getAttributes()) { // iterate over this guid attributes
 
-				boolean flag = true;
+				String guid_attr = attr.getKey();   // guid attribute
+				double guid_val  = attr.getValue(); // guid value
 
-				for (PairAttributeRange s_pair : s.getPairs()) { // iterate over this search pairs
+				for (PairAttributeRange pair : r.getPairs()) { // iterate over this region pairs
 
-					String s_attr  = s_pair.getAttrkey();         // search attribute
-					double s_start = s_pair.getRange().getLow();  // search range start
-					double s_end   = s_pair.getRange().getHigh(); // search range end
+					String r_attr  = pair.getAttrkey();         // region attribute
+					double r_start = pair.getRange().getLow();  // region range start
+					double r_end   = pair.getRange().getHigh(); // region range end
 
-					for (PairAttributeRange r_pair : r.getPairs()) { // iterate over this region pairs
+					if (guid_attr.equals(r_attr)) { // if we are dealing with same attribute
 
-						String r_attr  = r_pair.getAttrkey();         // region attribute
-						double r_start = r_pair.getRange().getLow();  // region range start
-						double r_end   = r_pair.getRange().getHigh(); // region range end 
-
-						if (s_attr.equals(r_attr)) { // check whether we are dealing with same atribute
-
-							if (s_start > s_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
-
-								if (s_start > r_end && s_end < r_start) {
-
-									flag = false;
-
-								}
-								
-							} else {
-
-								if (s_start > r_end || s_end < r_start) { // check whether both region & search ranges overlap
-
-									flag = false;
-
-								}
-
-							}
-
+						if (guid_val < r_start || guid_val > r_end) { // check whether guid value is inside this region range
+							flag_guid = false;
 						}
 
 					}
-					
-				}
-				
-				if (flag) {
-
-					r.getSearchLoad().add(s);
 
 				}
+
+			}
+
+			if (flag_attr || flag_guid) {
+
+				r.getUpdateLoad().add(up);
 
 			}
 
@@ -185,184 +133,265 @@ public class Utilities {
 
 	}
 	
-	public static void checkTouchesPerRegion(List<Region> regions, List<GUID> guids, Queue<Search> slist, Queue<Update> uplist) {
+	private static void checkSearchLoadPerRegion(List<Region> regions, Search s) {
+		
+		for (Region r : regions) { // iterate over regions
+
+			boolean flag = true;
+
+			for (PairAttributeRange s_pair : s.getPairs()) { // iterate over this search pairs
+
+				String s_attr  = s_pair.getAttrkey();         // search attribute
+				double s_start = s_pair.getRange().getLow();  // search range start
+				double s_end   = s_pair.getRange().getHigh(); // search range end
+
+				for (PairAttributeRange r_pair : r.getPairs()) { // iterate over this region pairs
+
+					String r_attr  = r_pair.getAttrkey();         // region attribute
+					double r_start = r_pair.getRange().getLow();  // region range start
+					double r_end   = r_pair.getRange().getHigh(); // region range end 
+
+					if (s_attr.equals(r_attr)) { // check whether we are dealing with same atribute
+
+						if (s_start > s_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
+
+							if (s_start > r_end && s_end < r_start) {
+
+								flag = false;
+
+							}
+
+						} else {
+
+							if (s_start > r_end || s_end < r_start) { // check whether both region & search ranges overlap
+
+								flag = false;
+
+							}
+
+						}
+
+					}
+
+				}
+
+			}
+
+			if (flag) {
+
+				r.getSearchLoad().add(s);
+
+			}
+
+		}
+
+	}
+	
+	public static Queue<Operation> sortOperations(Queue<Search> slist, Queue<Update> uplist, Random rnd) {
+		
+		Queue<Operation> operations = new LinkedList<Operation>();
+		
+		while (!slist.isEmpty() || !uplist.isEmpty()) {
+
+			boolean flag = rnd.nextBoolean();
+
+			Operation op = null;
+
+			if (flag) {
+				op = uplist.poll();
+			} else {
+				op = slist.poll();
+			}
+			
+			if (op != null) {
+				operations.add(op);
+			}
+
+		}
+		
+		return operations;
+	}
+	
+	public static void checkTouchesPerRegion(List<Region> regions, List<GUID> guids, Queue<Operation> oplist) {
 		
 		distributeGUIDsAmongRegions(regions, guids);
 		
-		Map<Region, Integer> updateTouchesPerRegion = checkUpdateTouchesPerRegion(regions, uplist);
-		Map<Region, Integer> searchTouchesPerRegion = checkSearchTouchesPerRegion(regions, slist);
+		Map<Region, Integer> touchesPerRegion = new HashMap<Region, Integer>();
+		
+		for (Operation op : oplist) {
+			
+			if (op instanceof Update) {	checkUpdateTouchesPerRegion(regions, (Update)op, touchesPerRegion); }
+			
+			if (op instanceof Search) {	checkSearchTouchesPerRegion(regions, (Search)op, touchesPerRegion); }
+			
+		}
 		
 		for (Region r : regions) {
 			
 			int count = 0;
-			count += updateTouchesPerRegion.get(r);
-			count += searchTouchesPerRegion.get(r);
+			count += touchesPerRegion.get(r);
 			r.setTouches(count);
 			
 		}
 		
 	}
 	
-	private static Map<Region, Integer> checkUpdateTouchesPerRegion(List<Region> regions, Queue<Update> uplist) {
-		
-		Map<Region, Integer> updateTouchesPerRegion = new HashMap<Region, Integer>();
-		
-		for (Update up : uplist) { // iterate over updates
-			
-			GUID guid = up.getGuid();
+	private static void checkUpdateTouchesPerRegion(List<Region> regions, Update up, Map<Region, Integer> map) {
+							
+		GUID guid = up.getGuid();
 
-			for (Region region : regions) { // iterate over regions
+		for (Region region : regions) { // iterate over regions
 
-				boolean previouslyInRegion = true;
-				int count = 0;
+			boolean previouslyInRegion = true;
+			int count = 0;
 
-				// I) Checks whether this update's GUID is already in this region
-				for (Attribute attr : guid.getAttributes()) { // iterate over guid attributes
+			// I) Checks whether this update's GUID is already in this region
+			for (Attribute attr : guid.getAttributes()) { // iterate over guid attributes
 
-					String guidAttrKey = attr.getKey();    
-					double guidAttrVal = attr.getValue(); 
+				String guidAttrKey = attr.getKey();    
+				double guidAttrVal = attr.getValue(); 
 
-					for (PairAttributeRange pair : region.getPairs()) { // iterate over this region attributes
-						
-						String regionAttrKey    = pair.getAttrkey();         
-						double regionRangeStart = pair.getRange().getLow(); 
-						double regionRangeEnd   = pair.getRange().getHigh(); 
-						
-						if (guidAttrKey.equals(regionAttrKey)) {
-							if (guidAttrVal < regionRangeStart || guidAttrVal > regionRangeEnd) { // checks whether guid is in this region
-								previouslyInRegion = false;
-							}
+				for (PairAttributeRange pair : region.getPairs()) { // iterate over this region attributes
+
+					String regionAttrKey    = pair.getAttrkey();         
+					double regionRangeStart = pair.getRange().getLow(); 
+					double regionRangeEnd   = pair.getRange().getHigh(); 
+
+					if (guidAttrKey.equals(regionAttrKey)) {
+						if (guidAttrVal < regionRangeStart || guidAttrVal > regionRangeEnd) { // checks whether guid is in this region
+							previouslyInRegion = false;
 						}
 					}
 				}
-				
-				// If so ...
-				if (previouslyInRegion) {
-					count++; // counts a touch
-					if (region.getGUIDs().contains(guid)) { region.getGUIDs().remove(guid); } // removes it from this region's guid list
-				}
-				
-				boolean comingToRegion = true;
+			}
 
-				// II) Checks whether this update moves a GUID to this region
-				for (Attribute attr : up.getAttributes()) { // iterate over this update attributes
-					
-					String updateAttrKey = attr.getKey();
-					double updateAttrVal = attr.getValue();
-					
-					for (PairAttributeRange pair : region.getPairs()) { // iterate over this region attributes
-						
-						String regionAttrKey = pair.getAttrkey();         
-						double regionRangeStart = pair.getRange().getLow(); 
-						double regionRangeEnd = pair.getRange().getHigh();
-						
-						if (updateAttrKey.equals(regionAttrKey)) {
-							if (updateAttrVal < regionRangeStart || updateAttrVal > regionRangeEnd) { // checks whether guid is coming to this region (or if it is staying in this region)
-								comingToRegion = false;
-							}
+			// If so ...
+			if (previouslyInRegion) {
+				count++; // counts a touch
+				if (region.getGUIDs().contains(guid)) { region.getGUIDs().remove(guid); } // removes it from this region's guid list
+			}
+
+			boolean comingToRegion = true;
+
+			// II) Checks whether this update moves a GUID to this region
+			for (Attribute attr : up.getAttributes()) { // iterate over this update attributes
+
+				String updateAttrKey = attr.getKey();
+				double updateAttrVal = attr.getValue();
+
+				for (PairAttributeRange pair : region.getPairs()) { // iterate over this region attributes
+
+					String regionAttrKey = pair.getAttrkey();         
+					double regionRangeStart = pair.getRange().getLow(); 
+					double regionRangeEnd = pair.getRange().getHigh();
+
+					if (updateAttrKey.equals(regionAttrKey)) {
+						if (updateAttrVal < regionRangeStart || updateAttrVal > regionRangeEnd) { // checks whether guid is coming to this region (or if it is staying in this region)
+							comingToRegion = false;
 						}
 					}
 				}
-				
-				// If so ...
-				if (comingToRegion) {
-					
-					for (Attribute attr : up.getAttributes()) { guid.set_attribute(attr.getKey(), attr.getValue()); } // updates its attributes with info from this update operation			
-				
-					region.getGUIDs().add(guid); // adds it to this region's guid list
-					if (!previouslyInRegion) { count++; } // if it is coming from another region, counts one more touch
-					
-				}
+			}
 
-				updateTouchesPerRegion.put(region, count);
+			// If so ...
+			if (comingToRegion) {
+
+				for (Attribute attr : up.getAttributes()) { guid.set_attribute(attr.getKey(), attr.getValue()); } // updates its attributes with info from this update operation			
+
+				region.getGUIDs().add(guid); // adds it to this region's guid list
+				if (!previouslyInRegion) { count++; } // if it is coming from another region, counts one more touch
 
 			}
+
+			if (map.containsKey(region)) {
+				int previous_count = map.get(region);
+				map.put(region, count+previous_count);
+			} else {
+				map.put(region, count);
+			}
+
 		}
-		
-		return updateTouchesPerRegion;
-		
-	}
+	}		
+
 	
-	private static Map<Region, Integer> checkSearchTouchesPerRegion(List<Region> regions, Queue<Search> slist) {
-		
-		Map<Region, Integer> searchTouchesPerRegion = new HashMap<Region, Integer>();
+	private static void checkSearchTouchesPerRegion(List<Region> regions, Search s, Map<Region, Integer> map) {
 
-		for (Search s : slist) { // iterate over searches
+		for (Region region : regions) { // iterate over regions
 
-			for (Region region : regions) { // iterate over regions
-				
-				boolean isInRegion = true;
-				int count = 0;
+			boolean isInRegion = true;
+			int count = 0;
 
-				// I) Checks whether this search is in this region
-				
-				for (PairAttributeRange searchPair : s.getPairs()) { // iterate over this search's attributes
+			// I) Checks whether this search is in this region
 
-					String searchAttrKey    = searchPair.getAttrkey();
-					double searchRangeStart = searchPair.getRange().getLow();
-					double searchRangeEnd   = searchPair.getRange().getHigh();
+			for (PairAttributeRange searchPair : s.getPairs()) { // iterate over this search's attributes
 
-					for (PairAttributeRange regionPair : region.getPairs()) { // iterate over this region's attributes
+				String searchAttrKey    = searchPair.getAttrkey();
+				double searchRangeStart = searchPair.getRange().getLow();
+				double searchRangeEnd   = searchPair.getRange().getHigh();
 
-						String regionAttrKey    = regionPair.getAttrkey();
-						double regionRangeStart = regionPair.getRange().getLow();
-						double regionRangeEnd   = regionPair.getRange().getHigh();
+				for (PairAttributeRange regionPair : region.getPairs()) { // iterate over this region's attributes
 
-						if (searchAttrKey.equals(regionAttrKey)) {
-							if (searchRangeStart > searchRangeEnd) {
-								if (searchRangeStart > regionRangeEnd && searchRangeEnd < regionRangeStart) { isInRegion = false; }
-							} else {
-								if (searchRangeStart > regionRangeEnd || searchRangeEnd < regionRangeStart) { isInRegion = false; }
-							}
+					String regionAttrKey    = regionPair.getAttrkey();
+					double regionRangeStart = regionPair.getRange().getLow();
+					double regionRangeEnd   = regionPair.getRange().getHigh();
+
+					if (searchAttrKey.equals(regionAttrKey)) {
+						if (searchRangeStart > searchRangeEnd) {
+							if (searchRangeStart > regionRangeEnd && searchRangeEnd < regionRangeStart) { isInRegion = false; }
+						} else {
+							if (searchRangeStart > regionRangeEnd || searchRangeEnd < regionRangeStart) { isInRegion = false; }
 						}
 					}
 				}
-				
-				// II) If so, counts the number of guids already in this region that meet this search's requirements
-				
-				if (isInRegion) {
+			}
 
-					for (GUID guid : region.getGUIDs()) { // iterate over this region's guids
-						
-						boolean flag = true;
-						
-						for (Attribute attr : guid.getAttributes()) { // iterate over this guid's attributes
-							
-							String guidAttrKey = attr.getKey();    
-							double guidAttrVal = attr.getValue();
-							
-							for (PairAttributeRange pair : s.getPairs()) { // iterate over this search's attributes
-								
-								String searchAttrKey    = pair.getAttrkey();
-								double searchRangeStart = pair.getRange().getLow();
-								double searchRangeEnd   = pair.getRange().getHigh();
-								
-								if (guidAttrKey.equals(searchAttrKey)) {
-									if (searchRangeStart > searchRangeEnd) {
-										if (guidAttrVal < searchRangeStart && guidAttrVal > searchRangeEnd) { flag = false; }
-									} else {
-										if (guidAttrVal < searchRangeStart || guidAttrVal > searchRangeEnd) { flag = false; }
-									}
+			// II) If so, counts the number of guids already in this region that meet this search's requirements
+
+			if (isInRegion) {
+
+				for (GUID guid : region.getGUIDs()) { // iterate over this region's guids
+
+					boolean flag = true;
+
+					for (Attribute attr : guid.getAttributes()) { // iterate over this guid's attributes
+
+						String guidAttrKey = attr.getKey();    
+						double guidAttrVal = attr.getValue();
+
+						for (PairAttributeRange pair : s.getPairs()) { // iterate over this search's attributes
+
+							String searchAttrKey    = pair.getAttrkey();
+							double searchRangeStart = pair.getRange().getLow();
+							double searchRangeEnd   = pair.getRange().getHigh();
+
+							if (guidAttrKey.equals(searchAttrKey)) {
+								if (searchRangeStart > searchRangeEnd) {
+									if (guidAttrVal < searchRangeStart && guidAttrVal > searchRangeEnd) { flag = false; }
+								} else {
+									if (guidAttrVal < searchRangeStart || guidAttrVal > searchRangeEnd) { flag = false; }
 								}
-								
 							}
-							
+
 						}
-						
-						if (flag) { count++; }
-						
+
 					}
-									
-				} 
-				
-				searchTouchesPerRegion.put(region, count);
-				
+
+					if (flag) { count++; }
+
+				}
+
+			} 
+
+			if (map.containsKey(region)) {
+				int previous_count = map.get(region);
+				map.put(region, count+previous_count);
+			} else {
+				map.put(region, count);
 			}
+
 		}
-		
-		return searchTouchesPerRegion;
 	}
-	
+			
 	private static void distributeGUIDsAmongRegions(List<Region> regions, List<GUID> guids) {
 		
 		for (GUID guid : guids) { // iterate over GUIDs
@@ -407,17 +436,12 @@ public class Utilities {
 		
 	}
 	
-	private static void clear_search_load(List<Region> regions) {
+	private static void clear_regions_load(List<Region> regions) {
 		
-		for (Region r : regions)
+		for (Region r : regions) {
 			r.getSearchLoad().clear();
-		
-	}
-	
-	private static void clear_update_load(List<Region> regions) {
-		
-		for (Region r : regions)
 			r.getUpdateLoad().clear();
+		}
 		
 	}
 	

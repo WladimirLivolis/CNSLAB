@@ -47,9 +47,9 @@ public class Main {
 		int num_mach = 100;
 		int num_GUIDs = 500;
 		int num_update_training_samples = 5000;
-		int num_search_training_samples = 0;
+		int num_search_training_samples = 5000;
 		int num_update_new_samples = 5000;
-		int num_search_new_samples = 0;
+		int num_search_new_samples = 5000;
 		int num_experiments = 100;
 				
 		List<PairAttributeRange> pairs = new ArrayList<PairAttributeRange>();
@@ -68,7 +68,10 @@ public class Main {
 		// Generates update & search loads for training
 		List<GUID> GUIDs     = Utilities.generateGUIDs(num_GUIDs, num_attr, rnd); 
 		Queue<Update> uplist = Utilities.generateUpdateLoad(num_attr, num_update_training_samples, GUIDs, rnd);
-		Queue<Search> slist  = Utilities.generateSearchLoad(num_attr, num_search_training_samples, rnd);	
+		Queue<Search> slist  = Utilities.generateSearchLoad(num_attr, num_search_training_samples, rnd);
+		
+		// Sort operations
+		Queue<Operation> oplist = Utilities.sortOperations(slist, uplist, rnd);
 		
 		for (int h = 1; h <= 2; h++) {
 			
@@ -76,13 +79,13 @@ public class Main {
 			
 			if (h==1) {
 				fileName = "heuristic1.txt";
-				regions = heuristic1.partition(uplist, slist);
+				regions = heuristic1.partition(oplist);
 			} else {
 				fileName = "heuristic2.txt";
-				regions = heuristic2.partition(GUIDs, uplist, slist);
+				regions = heuristic2.partition(GUIDs, oplist);
 			}
 			
-			System.out.println(heuristic1.JFI(uplist, slist, regions)+"\n");
+			System.out.println(heuristic1.JFI(oplist, regions)+"\n");
 			
 			Map<Integer, List<Integer>> realLoad = new TreeMap<Integer, List<Integer>>();
 			
@@ -97,12 +100,14 @@ public class Main {
 				Queue<Update> newUplist = Utilities.generateUpdateLoad(num_attr, num_update_new_samples, newGUIDs, rnd);
 				Queue<Search> newSlist  = Utilities.generateSearchLoad(num_attr, num_search_new_samples, rnd);
 				
+				// Sort operations
+				Queue<Operation> newOplist = Utilities.sortOperations(newSlist, newUplist, rnd);
+				
 				// Calculates JFI
-				JFIs.add(heuristic1.JFI(newUplist, newSlist, regions));
+				JFIs.add(heuristic1.JFI(newOplist, regions));
 	
 				// Checks number of operations per region
-				Utilities.checkSearchLoadPerRegion(regions, newSlist);
-				Utilities.checkUpdateLoadPerRegion(regions, newUplist);
+				Utilities.checkLoadPerRegion(regions, newOplist);
 				
 				//Utilities.checkTouchesPerRegion(regions, newGUIDs, newSlist, newUplist);
 				
