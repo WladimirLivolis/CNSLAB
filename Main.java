@@ -44,12 +44,12 @@ public class Main {
 		Random rnd = new Random();
 		
 		int num_attr = 3;
-		int num_mach = 64;
-		int num_GUIDs = 100;
+		int num_mach = 100;
+		int num_GUIDs = 500;
 		int num_update_training_samples = 5000;
-		int num_search_training_samples = 5000;
+		int num_search_training_samples = 0;
 		int num_update_new_samples = 5000;
-		int num_search_new_samples = 5000;
+		int num_search_new_samples = 0;
 		int num_experiments = 100;
 				
 		List<PairAttributeRange> pairs = new ArrayList<PairAttributeRange>();
@@ -68,7 +68,7 @@ public class Main {
 		// Generates update & search loads for training
 		List<GUID> GUIDs     = Utilities.generateGUIDs(num_GUIDs, num_attr, rnd); 
 		Queue<Update> uplist = Utilities.generateUpdateLoad(num_attr, num_update_training_samples, GUIDs, rnd);
-		Queue<Search> slist  = Utilities.generateSearchLoad(num_attr, num_search_training_samples, rnd);
+		Queue<Search> slist  = Utilities.generateSearchLoad(num_attr, num_search_training_samples, rnd);	
 		
 		for (int h = 1; h <= 2; h++) {
 			
@@ -104,14 +104,17 @@ public class Main {
 				Utilities.checkSearchLoadPerRegion(regions, newSlist);
 				Utilities.checkUpdateLoadPerRegion(regions, newUplist);
 				
+				//Utilities.checkTouchesPerRegion(regions, newGUIDs, newSlist, newUplist);
+				
 				for (Region r : regions) {
 					
 					int index = regions.indexOf(r)+1;
 					
 					int myUpdateLoad = r.getUpdateLoad().size();
 					int mySearchLoad = r.getSearchLoad().size();
-									
+					
 					int totalLoad = myUpdateLoad+mySearchLoad;
+					//int totalLoad = r.getTouches();
 					
 					if (!realLoad.containsKey(index)) {
 						ArrayList<Integer> load = new ArrayList<Integer>(num_experiments);

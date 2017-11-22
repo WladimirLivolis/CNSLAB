@@ -65,7 +65,7 @@ public class HeuristicV1 {
 		
 		double n = (double) num_machines;
 		int num_iterations = (int) Math.sqrt(n);
-		int count = 0;
+		int count = 1;
 				
 		for (int i = 1; i < num_iterations; i++) {
 			
