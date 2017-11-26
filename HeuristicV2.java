@@ -15,113 +15,86 @@ public class HeuristicV2 {
 		this.regions = regions;
 	}
 	
-	private Map<Double, Integer> updateAndSearchTouchCounter(List<GUID> GUIDs, Queue<Operation> oplist) {
+	private Map<Double, Integer> updateAndSearchTouchesCounter(List<GUID> GUIDs, Queue<Operation> oplist) {
 		
 		Map<Double, Integer> touchesMap = new TreeMap<Double, Integer>();
-		Map<Double, List<GUID>> guidlist = new TreeMap<Double, List<GUID>>();
 		
-		double granularity = 0.01;
-		int index = 0; // attribute (axis)
-		
-		for (double d = 0.0; d <= 1.0; d += granularity) {
-			
-			int count = 0;
-			guidlist.put(d, new ArrayList<GUID>());
+		int index = 0; // here we define the attribute axis we are splitting. For simplicity's sake, we pick first attribute.
 
-			for (GUID guid : GUIDs) {
+		for (Operation op : oplist) { // iterate over all operations
+			
+			if (op instanceof Update) {
 				
-				double guid_attr_val = guid.getAttributes().get(index).getValue();
+				Update up = (Update)op;
+				GUID up_guid = up.getGuid(); // pick this update's guid
 				
-				boolean guid_at_d = ( guid_attr_val >= d && guid_attr_val < d+granularity );
+				double up_attr_val = up.getAttributes().get(index).getValue();        // this update's first attribute value
+				double guid_attr_val = up_guid.getAttributes().get(index).getValue(); // guid's first attribute value
 				
-				if ( guid_at_d ) { 
-					guidlist.get(d).add(guid);
+				// record touches
+				if (touchesMap.containsKey(guid_attr_val)) {
+					int previous_count = touchesMap.get(guid_attr_val);
+					touchesMap.put(guid_attr_val, previous_count++);
+				} else {
+					touchesMap.put(guid_attr_val, 1);
+				}
+				if (up_attr_val != guid_attr_val) {
+					if (touchesMap.containsKey(up_attr_val)) {
+						int previous_count = touchesMap.get(up_attr_val);
+						touchesMap.put(up_attr_val, previous_count++);
+					} else {
+						touchesMap.put(up_attr_val, 1);
+					}
+				}
+				
+				// update guid's attributes with values from update
+				for (Attribute attr : up.getAttributes()) { 
+					String key = attr.getKey();
+					double val = attr.getValue();
+					up_guid.set_attribute(key, val);
 				}
 				
 			}
 			
-			for (Operation op : oplist) {
+			if (op instanceof Search) {
 				
-				if (op instanceof Update) {
-					
-					Update up = (Update)op;
-					
-					GUID up_guid = up.getGuid();
-					double guid_attr_val = up_guid.getAttributes().get(index).getValue();
-					double up_attr_val = up.getAttributes().get(index).getValue();
-					
-					boolean guid_at_d   = ( guid_attr_val >= d && guid_attr_val < d+granularity );
-					boolean moving_to_d = ( up_attr_val >= d && up_attr_val < d+granularity );
-					
-					// CASE I: if guid is at point 'd' and its going to move to another point
-					if ( guid_at_d && !moving_to_d ) {
-						guidlist.get(d).remove(up_guid); // remove guid from this point
-						count++; 
-					}
-					
-					// CASE II: if guid came from another point to 'd'
-					if ( !guid_at_d && moving_to_d ) {
-						guidlist.get(d).add(up_guid); // add guid to new point
-						for (Attribute attr : up.getAttributes()) { 
-							String key = attr.getKey();
-							double val = attr.getValue();
-							up_guid.set_attribute(key, val); // update guid attributes with values from update
-						}
-						count++; 
-					}
-					
-					// CASE III:
-					// if guid is at this point 'd' and this update doesn't move it to another point
-					// we check whether this update modify any other attribute value
-					if ( guid_at_d && moving_to_d ) { 
-						boolean flag = false;
-						for (Attribute up_attr : up.getAttributes()) { // iterate over update attributes
-							String up_key = up_attr.getKey();
-							double up_val = up_attr.getValue();
-							for (Attribute g_attr : up_guid.getAttributes()) { // iterate over guid attributes
-								String guid_key = g_attr.getKey();
-								double guid_val = g_attr.getValue();
-								if (guid_key.equals(up_key)) { // if we are dealing with same attribute
-									if (up_val != guid_val) {  // and this update is modifying its value
-										up_guid.set_attribute(up_key, up_val);
-										flag = true;
-									}
-								}
-							}
-						}
-						if (flag) { count++; }
-					}
-					
-				}
+				Search s = (Search)op;
 				
-				if (op instanceof Search) {
+				double range_start = s.getPairs().get(index).getRange().getLow();  // this search's range start point
+				double range_end   = s.getPairs().get(index).getRange().getHigh(); // this search's range end point
+				
+				for (GUID guid : GUIDs) {
 					
-					Search s = (Search)op;
+					double guid_attr_val = guid.getAttributes().get(index).getValue(); // guid's first attribute value
 					
-					double range_start = s.getPairs().get(index).getRange().getLow();
-					double range_end   = s.getPairs().get(index).getRange().getHigh();
+					boolean flag = false;
 					
 					if (range_start > range_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
-						
-						if ( (d >= range_start && d <= 1.0) || (d >= 0.0 && d <= range_end) ) { 
-							count += guidlist.get(d).size(); 
-						}
-						
+						flag = (guid_attr_val >= range_start || guid_attr_val <= range_end);
 					} else {
-						if (d >= range_start && d <= range_end) { 
-							count += guidlist.get(d).size(); 
-						}
+						flag = (guid_attr_val >= range_start && guid_attr_val <= range_end);
 					}
 					
-				}
+					if (flag) { // check whether this guid is in this search's range
+						
+						// if so, it's a touch
+						if (touchesMap.containsKey(guid_attr_val)) {
+							int previous_count = touchesMap.get(guid_attr_val);
+							touchesMap.put(guid_attr_val, previous_count++);
+						} else {
+							touchesMap.put(guid_attr_val, 1);
+						}
+						
+					}
+					
+				}				
 				
 			}
-			
-			touchesMap.put(d, count);
 			
 		}
 		
 		return touchesMap;
+		
 	}
 	
 	/* Splits region into *square root of n* MEE (mutually exclusive and exhaustive) regions, where n = number of machines.
@@ -132,17 +105,16 @@ public class HeuristicV2 {
 		
 		/* PART-1 Identify the quantile points */
 		
-		Map<Double, Integer> touchesMap = updateAndSearchTouchCounter(GUIDs, oplist);
+		Map<Double, Integer> touchesMap = updateAndSearchTouchesCounter(GUIDs, oplist);
 		Map<Double, Double> quantiles = new TreeMap<Double, Double>();
 		
 		int total_load = 0, n_regions = (int) Math.sqrt(num_machines), count = 0, index = 0;
-		double granularity = 0.01;
 		
 		// calculates total load
-		for (Map.Entry<Double, Integer> e : touchesMap.entrySet()) { total_load += e.getValue(); }
+		for (int val : touchesMap.values()) { total_load += val; }
 		
-		for (double d = 0.0; d <= 1.0; d += granularity) {
-			
+		for (double d : touchesMap.keySet()) { // iterate over the keys, which are the candidate points to be quantile
+		
 			count += touchesMap.get(d);  // 'count' represents the total load until point 'd'
 			
 			double percent_load = count/(double)total_load;
@@ -160,13 +132,13 @@ public class HeuristicV2 {
 					}
 				}
 			}
+			
 		}
 		
 		/* PART-2 Split regions at quantile points */
 		
 		ArrayList<Double> values = new ArrayList<Double>();
-		for (Map.Entry<Double, Double> e : quantiles.entrySet())
-			values.add(e.getValue());
+		values.addAll(quantiles.values());
 				
 		List<Region> newRegions = new ArrayList<Region>();
 		
