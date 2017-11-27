@@ -11,7 +11,7 @@ import java.util.TreeMap;
 
 public class Main {
 	
-	public static Map<Integer, Double> calculateConfidenceInterval(Map<Integer, List<Integer>> load, Map<Integer, Double> mean) {
+	private static Map<Integer, Double> calculateConfidenceInterval(Map<Integer, List<Integer>> load, Map<Integer, Double> mean) {
 		
 		Map<Integer, Double> confidenceInterval = new TreeMap<Integer, Double>();
 
@@ -75,6 +75,10 @@ public class Main {
 		
 		for (int h = 1; h <= 2; h++) {
 			
+			// Copy Oplist & GUIDs
+//			List<GUID> copyOfGUIDs = Utilities.copyGUIDs(GUIDs);
+//			Queue<Operation> copyOfOplist = Utilities.copyOplist(oplist, copyOfGUIDs);
+						
 			String fileName = "experiment1.txt";
 			
 			if (h==1) {
@@ -85,7 +89,8 @@ public class Main {
 				regions = heuristic2.partition(GUIDs, oplist);
 			}
 			
-			System.out.println(heuristic1.JFI(oplist, regions)+"\n");
+			System.out.println(Utilities.JFI(oplist, regions)+"\n");
+//			System.out.println(Utilities.JFI(copyOfOplist, copyOfGUIDs, regions)+"\n");
 			
 			Map<Integer, List<Integer>> realLoad = new TreeMap<Integer, List<Integer>>();
 			
@@ -104,12 +109,8 @@ public class Main {
 				Queue<Operation> newOplist = Utilities.sortOperations(newSlist, newUplist, rnd);
 				
 				// Calculates JFI
-				JFIs.add(heuristic1.JFI(newOplist, regions));
-	
-				// Checks number of operations per region
-				Utilities.checkLoadPerRegion(regions, newOplist);
-				
-				//Utilities.checkTouchesPerRegion(regions, newGUIDs, newSlist, newUplist);
+				JFIs.add(Utilities.JFI(newOplist, regions));
+//				JFIs.add(Utilities.JFI(newOplist, newGUIDs, regions));
 				
 				for (Region r : regions) {
 					
@@ -119,7 +120,7 @@ public class Main {
 					int mySearchLoad = r.getSearchLoad().size();
 					
 					int totalLoad = myUpdateLoad+mySearchLoad;
-					//int totalLoad = r.getTouches();
+//					int totalLoad = r.getUpdateTouches()+r.getSearchTouches();
 					
 					if (!realLoad.containsKey(index)) {
 						ArrayList<Integer> load = new ArrayList<Integer>(num_experiments);

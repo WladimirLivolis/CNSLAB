@@ -8,11 +8,71 @@ import java.util.Random;
 
 public class Utilities {
 	
+	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. 
+	 * This JFI is based on search & update loads per region. */
+	public static double JFI(Queue<Operation> oplist, List<Region> rlist) {
+		
+		long upload = 0, sload = 0, upsquare = 0, ssquare = 0;
+		
+		checkLoadPerRegion(rlist, oplist);
+		
+		for (Region r : rlist) {			
+			upload += r.getUpdateLoad().size();
+			sload += r.getSearchLoad().size();
+			upsquare += Math.pow(r.getUpdateLoad().size(), 2);
+			ssquare += Math.pow(r.getSearchLoad().size(), 2);
+		}
+		
+		double JU = 0.0, JS = 0.0;
+		
+		if (upload != 0)
+			JU = Math.pow(upload, 2) / ( rlist.size() * upsquare );
+		
+		if (sload != 0)
+			JS = Math.pow(sload , 2) / ( rlist.size() * ssquare  );
+								
+		double RHO = (double) sload / ( sload + upload );
+						
+		double JFI = ( RHO * JS ) + ( (1 - RHO) * JU );
+		
+		return JFI;
+	}
+	
+	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. 
+	 * This JFI is based on search & update touches per region. */
+	public static double JFI(Queue<Operation> oplist, List<GUID> GUIDs, List<Region> rlist) {
+		
+		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0;
+		
+		checkTouchesPerRegion(rlist, GUIDs, oplist);
+		
+		for (Region r : rlist) {			
+			up_touches += r.getUpdateTouches();
+			s_touches += r.getSearchTouches();
+			upsquare += Math.pow(r.getUpdateTouches(), 2);
+			ssquare += Math.pow(r.getSearchTouches(), 2);
+		}
+		
+		double JU = 0.0, JS = 0.0;
+		
+		if (up_touches != 0)
+			JU = Math.pow(up_touches, 2) / ( rlist.size() * upsquare );
+		
+		if (s_touches != 0)
+			JS = Math.pow(s_touches , 2) / ( rlist.size() * ssquare  );
+								
+		double RHO = (double) s_touches / ( s_touches + up_touches );
+						
+		double JFI = ( RHO * JS ) + ( (1 - RHO) * JU );
+		
+		return JFI;
+	}
+	
 	public static List<GUID> generateGUIDs(int qty, int AttrNum, Random rnd) {
 		List<GUID> GUIDs = new ArrayList<GUID>(qty);
 		for (int i = 0; i < qty; i++) {
 			GUID guid = new GUID("GUID"+i);
-			for (int j = 0; j < AttrNum; j++) {
+			for (int j = 1; j <= AttrNum; j++) {
 				double v = rnd.nextDouble();
 				guid.set_attribute("A"+j, v);
 			}
@@ -21,10 +81,62 @@ public class Utilities {
 		return GUIDs;
 	}
 	
+	public static List<GUID> copyGUIDs(List<GUID> GUIDs) {
+		List<GUID> newGUIDs = new ArrayList<GUID>(GUIDs.size());
+		for (GUID guid : GUIDs) {
+			GUID copy = new GUID(guid.getName());
+			for (Attribute a : guid.getAttributes()) {
+				copy.set_attribute(a.getKey(), a.getValue());
+			}
+			newGUIDs.add(copy);
+		}
+		return newGUIDs;
+	}
+	
+	public static Queue<Operation> copyOplist(Queue<Operation> oplist, List<GUID> copyOfGUIDs) {
+		Queue<Operation> newOplist = new LinkedList<Operation>();
+		for (Operation op : oplist) {
+			
+			if (op instanceof Update) {
+				
+				Update up = (Update)op;
+				Update copy = null;
+				
+				for (GUID guid : copyOfGUIDs) {
+					if (guid.getName().equals(up.getGuid().getName())) {
+						copy = new Update(guid);
+					}
+				}
+				
+				newOplist.add(copy);				
+				
+			}
+			
+			if (op instanceof Search) {
+				
+				Search s = (Search)op;
+				Search copy = new Search();
+				
+				for (PairAttributeRange pair : s.getPairs()) {
+					
+					copy.addPair(pair.getAttrkey(), new Range(pair.getRange().getLow(), pair.getRange().getHigh()));
+					
+				}
+				
+				newOplist.add(copy);
+				
+			}
+			
+		}
+		
+		return newOplist;
+		
+	}
+	
 	public static Queue<Update> generateUpdateLoad(int AttrNum, int UpNum, List<GUID> GUIDs, Random rnd) {
 		Queue<Update> updates = new LinkedList<Update>();
 		for (int i = 0; i < UpNum; i++) {
-			GUID guid = GUIDs.get(rnd.nextInt(GUIDs.size())); //pick one of the GUIDs already created
+			GUID guid = GUIDs.get(rnd.nextInt(GUIDs.size())); // pick one of the GUIDs already created
 			Update up = new Update(guid);
 			for (int j = 1; j <= AttrNum; j++) {
 				double v = rnd.nextDouble();
@@ -214,23 +326,28 @@ public class Utilities {
 	
 	public static void checkTouchesPerRegion(List<Region> regions, List<GUID> guids, Queue<Operation> oplist) {
 		
+		clear_regions_touches(regions);
+		
 		distributeGUIDsAmongRegions(regions, guids);
 		
-		Map<Region, Integer> touchesPerRegion = new HashMap<Region, Integer>();
+		Map<Region, Integer> updateTouchesPerRegion = new HashMap<Region, Integer>();
+		Map<Region, Integer> searchTouchesPerRegion = new HashMap<Region, Integer>();
 		
 		for (Operation op : oplist) {
 			
-			if (op instanceof Update) {	checkUpdateTouchesPerRegion(regions, (Update)op, touchesPerRegion); }
+			if (op instanceof Update) {	checkUpdateTouchesPerRegion(regions, (Update)op, updateTouchesPerRegion); }
 			
-			if (op instanceof Search) {	checkSearchTouchesPerRegion(regions, (Search)op, touchesPerRegion); }
+			if (op instanceof Search) {	checkSearchTouchesPerRegion(regions, (Search)op, searchTouchesPerRegion); }
 			
 		}
 		
 		for (Region r : regions) {
 			
-			int count = 0;
-			count += touchesPerRegion.get(r);
-			r.setTouches(count);
+			int up_count = 0, s_count = 0;
+			up_count += updateTouchesPerRegion.get(r);
+			s_count  += searchTouchesPerRegion.get(r);
+			r.setUpdateTouches(up_count);
+			r.setSearchTouches(s_count);
 			
 		}
 		
@@ -441,6 +558,16 @@ public class Utilities {
 		for (Region r : regions) {
 			r.getSearchLoad().clear();
 			r.getUpdateLoad().clear();
+		}
+		
+	}
+	
+	private static void clear_regions_touches(List<Region> regions) {
+		
+		for (Region r : regions) {
+			r.getGUIDs().clear();
+			r.setSearchTouches(0);
+			r.setUpdateTouches(0);
 		}
 		
 	}

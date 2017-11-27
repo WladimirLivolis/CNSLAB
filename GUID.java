@@ -4,16 +4,16 @@ import java.util.List;
 
 public class GUID {
 	
-	private String guid;
+	private String name;
 	private List<Attribute> attributes;
 	
-	public GUID(String guid) {
-		this.guid = guid;
+	public GUID(String name) {
+		this.name = name;
 		this.attributes = new ArrayList<Attribute>();
 	}
 	
-	public String getGuid() {
-		return guid;
+	public String getName() {
+		return name;
 	}
 	
 	public List<Attribute> getAttributes() {

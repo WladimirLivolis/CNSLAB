@@ -17,35 +17,6 @@ public class HeuristicV1 {
 		return copy;
 	}
 	
-	/* Returns the Jain's Fairness Index (JFI) given a list of regions as well as search & update loads. */
-	public double JFI(Queue<Operation> oplist, List<Region> rlist) {
-		
-		long upload = 0, sload = 0, upsquare = 0, ssquare = 0;
-		
-		Utilities.checkLoadPerRegion(rlist, oplist);
-		
-		for (Region r : rlist) {			
-			upload += r.getUpdateLoad().size();
-			sload += r.getSearchLoad().size();
-			upsquare += Math.pow(r.getUpdateLoad().size(), 2);
-			ssquare += Math.pow(r.getSearchLoad().size(), 2);
-		}
-		
-		double JU = 0.0, JS = 0.0;
-		
-		if (upload != 0)
-			JU = Math.pow(upload, 2) / ( rlist.size() * upsquare );
-		
-		if (sload != 0)
-			JS = Math.pow(sload , 2) / ( rlist.size() * ssquare  );
-								
-		double RHO = (double) sload / ( sload + upload );
-						
-		double JFI = ( RHO * JS ) + ( (1 - RHO) * JU );
-		
-		return JFI;
-	}
-	
 	public HeuristicV1(int num_machines, List<Region> regions) {
 		this.num_machines = num_machines;
 		this.regions = regions;
@@ -100,7 +71,7 @@ public class HeuristicV1 {
 						newRegions.add(newRegion2);	
 						
 						// Calculates JFI index
-						double jfindex = JFI(oplist, newRegions);
+						double jfindex = Utilities.JFI(oplist, newRegions);
 						
 						// If JFIndex is the best so far, then we keep it
 						if (jfindex > bestJFI) {

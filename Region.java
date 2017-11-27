@@ -9,7 +9,8 @@ public class Region {
 	private List<Search> search_load;
 	private List<Update> update_load;
 	private List<GUID> GUIDs;
-	private int touches;
+	private int update_touches;
+	private int search_touches;
 	
 	public Region(String name, List<PairAttributeRange> pairs) {
 		this.name = name;
@@ -19,7 +20,8 @@ public class Region {
 		this.search_load = new ArrayList<Search>();
 		this.update_load = new ArrayList<Update>();
 		this.GUIDs = new ArrayList<GUID>();
-		this.touches = 0;
+		this.update_touches = 0;
+		this.search_touches = 0;
 	}
 	
 	public String getName() {
@@ -38,12 +40,20 @@ public class Region {
 		return search_load;
 	}
 	
-	public int getTouches() {
-		return touches;
+	public int getUpdateTouches() {
+		return update_touches;
 	}
 	
-	public void setTouches(int touches) {
-		this.touches = touches;
+	public int getSearchTouches() {
+		return search_touches;
+	}
+	
+	public void setUpdateTouches(int touches) {
+		this.update_touches = touches;
+	}
+	
+	public void setSearchTouches(int touches) {
+		this.search_touches = touches;
 	}
 	
 	public List<GUID> getGUIDs() {
