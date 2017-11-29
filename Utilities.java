@@ -133,6 +133,13 @@ public class Utilities {
 		
 	}
 	
+	public static List<Region> copyRegions(List<Region> regions) {
+		List<Region> copy = new ArrayList<Region>(regions.size());
+		for (Region r : regions)
+			copy.add(new Region(r.getName(),r.getPairs()));
+		return copy;
+	}
+	
 	public static Queue<Update> generateUpdateLoad(int AttrNum, int UpNum, List<GUID> GUIDs, Random rnd) {
 		Queue<Update> updates = new LinkedList<Update>();
 		for (int i = 0; i < UpNum; i++) {

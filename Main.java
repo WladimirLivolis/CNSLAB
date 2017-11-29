@@ -44,7 +44,7 @@ public class Main {
 		Random rnd = new Random();
 		
 		int num_attr = 3;
-		int num_mach = 100;
+		int num_mach = 64;
 		int num_GUIDs = 500;
 		int num_update_training_samples = 5000;
 		int num_search_training_samples = 5000;

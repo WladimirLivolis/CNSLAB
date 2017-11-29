@@ -60,22 +60,46 @@ public class HeuristicV2 {
 				
 				Search s = (Search)op;
 				
-				double range_start = s.getPairs().get(index).getRange().getLow();  // this search's range start point
-				double range_end   = s.getPairs().get(index).getRange().getHigh(); // this search's range end point
-				
 				for (GUID guid : GUIDs) {
+										
+					boolean flag = true;
 					
-					double guid_attr_val = guid.getAttributes().get(index).getValue(); // guid's first attribute value
-					
-					boolean flag = false;
-					
-					if (range_start > range_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
-						flag = (guid_attr_val >= range_start || guid_attr_val <= range_end);
-					} else {
-						flag = (guid_attr_val >= range_start && guid_attr_val <= range_end);
+					for (PairAttributeRange pair : s.getPairs()) {
+						
+						String range_attr  = pair.getAttrkey();         // this search's range attribute
+						double range_start = pair.getRange().getLow();  // this search's range start point
+						double range_end   = pair.getRange().getHigh(); // this search's range end point
+						
+						for (Attribute a : guid.getAttributes()) {
+							
+							String guid_attr_key = a.getKey();   // guid's attribute
+							double guid_attr_val = a.getValue(); // guid's attribute value
+							
+							if (guid_attr_key.equals(range_attr)) {
+								
+								if (range_start > range_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
+									
+									if (guid_attr_val < range_start && guid_attr_val > range_end) {
+										flag = false;
+									}
+									
+								} else {
+									
+									if (guid_attr_val < range_start || guid_attr_val > range_end) {
+										flag = false;
+									}
+									
+								}
+								
+							}
+							
+						}
+						
 					}
 					
 					if (flag) { // check whether this guid is in this search's range
+						
+						double guid_attr_val = guid.getAttributes().get(index).getValue(); // guid's first attribute value
 						
 						// if so, it's a touch
 						if (touchesMap.containsKey(guid_attr_val)) {

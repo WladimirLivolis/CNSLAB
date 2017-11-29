@@ -1,27 +1,18 @@
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.TreeMap;
 
 public class HeuristicV1 {
 	
 	private int num_machines;
 	private List<Region> regions;
 	
-	private List<Region> copyRegions() {
-		List<Region> copy = new ArrayList<Region>(regions.size());
-		for (Region r : regions)
-			copy.add(new Region(r.getName(),r.getPairs()));
-		return copy;
-	}
-	
 	public HeuristicV1(int num_machines, List<Region> regions) {
 		this.num_machines = num_machines;
 		this.regions = regions;
 	}
-	
 	
 	/* Splits region into *square root of n* MEE (mutually exclusive and exhaustive) regions, where n = number of machines.
 	 * 
@@ -29,7 +20,7 @@ public class HeuristicV1 {
 	 * 
 	 * For each existing region and for each of its attributes, we pick a hyperplane that crosses the attribute axis at value 0 < v < 1,
 	 * splitting the region into two new regions. Then, we calculate the JFI for this partitioning configuration and keep this information
-	 * until we know the JFI for every partitioning configuration. Finally, we stay with the partitioning configuration that maximizes
+	 * until we know another partitioning configuration with better JFI. Finally, we stay with the partitioning configuration that maximizes
 	 * the JFI.*/
 	public List<Region> partition(Queue<Operation> oplist) {
 		
@@ -41,7 +32,7 @@ public class HeuristicV1 {
 			
 			System.out.println(toString());
 			
-			Map<Double, List<Region>> possiblePartitions = new HashMap<Double, List<Region>>();
+			Map<Double, List<Region>> possiblePartitions = new TreeMap<Double, List<Region>>();
 			
 			double bestJFI = 0.0;
 					
@@ -55,7 +46,7 @@ public class HeuristicV1 {
 					for (double j = p.getRange().getLow()+interval_size; j < p.getRange().getHigh(); j+=interval_size) { // here we split the interval [0,1] into intervals of size 0.01
 						
 						// Creates a copy of regions
-						List<Region> newRegions = copyRegions();
+						List<Region> newRegions = Utilities.copyRegions(regions);
 						
 						// Creates two copies of the region to be split by the hyperplane Ai = j
 						Region newRegion1 = new Region("R"+count++, r.getPairs());
