@@ -12,15 +12,15 @@ public class Utilities {
 	 * This JFI is based on search & update loads per region. */
 	public static double JFI(Queue<Operation> oplist, List<Region> rlist) {
 		
-		long upload = 0, sload = 0, upsquare = 0, ssquare = 0;
+		double upload = 0, sload = 0, upsquare = 0, ssquare = 0;
 		
 		checkLoadPerRegion(rlist, oplist);
 		
 		for (Region r : rlist) {			
-			upload += r.getUpdateLoad().size();
-			sload += r.getSearchLoad().size();
-			upsquare += Math.pow(r.getUpdateLoad().size(), 2);
-			ssquare += Math.pow(r.getSearchLoad().size(), 2);
+			upload += r.getUpdateLoad();
+			sload += r.getSearchLoad();
+			upsquare += Math.pow(r.getUpdateLoad(), 2);
+			ssquare += Math.pow(r.getSearchLoad(), 2);
 		}
 		
 		double JU = 0.0, JS = 0.0;
@@ -30,8 +30,13 @@ public class Utilities {
 		
 		if (sload != 0)
 			JS = Math.pow(sload , 2) / ( rlist.size() * ssquare  );
+		
+		int num_searches = 0;
+		for (Operation op : oplist)
+			if (op instanceof Search)
+				num_searches++;
 								
-		double RHO = (double) sload / ( sload + upload );
+		double RHO = (double) num_searches / oplist.size();
 						
 		double JFI = ( RHO * JS ) + ( (1 - RHO) * JU );
 		
@@ -61,7 +66,12 @@ public class Utilities {
 		if (s_touches != 0)
 			JS = Math.pow(s_touches , 2) / ( rlist.size() * ssquare  );
 								
-		double RHO = (double) s_touches / ( s_touches + up_touches );
+		int num_searches = 0;
+		for (Operation op : oplist)
+			if (op instanceof Search)
+				num_searches++;
+								
+		double RHO = (double) num_searches / oplist.size();
 						
 		double JFI = ( RHO * JS ) + ( (1 - RHO) * JU );
 		
@@ -215,36 +225,36 @@ public class Utilities {
 
 			// II) Now checks whether this update is in this region regarding its guid
 
-			boolean flag_guid = true;
+//			boolean flag_guid = true;
+//
+//			GUID guid = up.getGuid();
+//
+//			for (Attribute attr : guid.getAttributes()) { // iterate over this guid attributes
+//
+//				String guid_attr = attr.getKey();   // guid attribute
+//				double guid_val  = attr.getValue(); // guid value
+//
+//				for (PairAttributeRange pair : r.getPairs()) { // iterate over this region pairs
+//
+//					String r_attr  = pair.getAttrkey();         // region attribute
+//					double r_start = pair.getRange().getLow();  // region range start
+//					double r_end   = pair.getRange().getHigh(); // region range end
+//
+//					if (guid_attr.equals(r_attr)) { // if we are dealing with same attribute
+//
+//						if (guid_val < r_start || guid_val > r_end) { // check whether guid value is inside this region range
+//							flag_guid = false;
+//						}
+//
+//					}
+//
+//				}
+//
+//			}
 
-			GUID guid = up.getGuid();
+			if (flag_attr) {
 
-			for (Attribute attr : guid.getAttributes()) { // iterate over this guid attributes
-
-				String guid_attr = attr.getKey();   // guid attribute
-				double guid_val  = attr.getValue(); // guid value
-
-				for (PairAttributeRange pair : r.getPairs()) { // iterate over this region pairs
-
-					String r_attr  = pair.getAttrkey();         // region attribute
-					double r_start = pair.getRange().getLow();  // region range start
-					double r_end   = pair.getRange().getHigh(); // region range end
-
-					if (guid_attr.equals(r_attr)) { // if we are dealing with same attribute
-
-						if (guid_val < r_start || guid_val > r_end) { // check whether guid value is inside this region range
-							flag_guid = false;
-						}
-
-					}
-
-				}
-
-			}
-
-			if (flag_attr || flag_guid) {
-
-				r.getUpdateLoad().add(up);
+				r.insertUpdateLoad(up, 1);
 
 			}
 
@@ -254,9 +264,13 @@ public class Utilities {
 	
 	private static void checkSearchLoadPerRegion(List<Region> regions, Search s) {
 		
+		double interval_size = 0.01;
+		
 		for (Region r : regions) { // iterate over regions
 
 			boolean flag = true;
+			
+			double weight = 0;
 
 			for (PairAttributeRange s_pair : s.getPairs()) { // iterate over this search pairs
 
@@ -279,6 +293,17 @@ public class Utilities {
 								flag = false;
 
 							}
+							
+							if (r_end > s_start) {
+								double start = s_start, end = r_end;
+								if (r_start > s_start) { start = r_start; }
+								weight += (end-start)/interval_size;
+							}
+							if (r_start < s_end) {
+								double start = r_start, end = s_end;
+								if (r_end < s_end) { end = r_end; }
+								weight += (end-start)/interval_size;
+							}
 
 						} else {
 
@@ -287,6 +312,11 @@ public class Utilities {
 								flag = false;
 
 							}
+							
+							double start = s_start, end = s_end;
+							if (r_start > s_start) { start = r_start; }
+							if (r_end < s_end) { end = r_end; }
+							weight += (end-start)/interval_size;
 
 						}
 
@@ -298,7 +328,7 @@ public class Utilities {
 
 			if (flag) {
 
-				r.getSearchLoad().add(s);
+				r.insertSearchLoad(s, weight);
 
 			}
 
@@ -392,7 +422,7 @@ public class Utilities {
 			// If so ...
 			if (previouslyInRegion) {
 				count++; // counts a touch
-				if (region.getGUIDs().contains(guid)) { region.getGUIDs().remove(guid); } // removes it from this region's guid list
+				if (region.hasThisGuid(guid)) { region.removeGuid(guid); } // removes it from this region's guid list
 			}
 
 			boolean comingToRegion = true;
@@ -422,7 +452,7 @@ public class Utilities {
 
 				for (Attribute attr : up.getAttributes()) { guid.set_attribute(attr.getKey(), attr.getValue()); } // updates its attributes with info from this update operation			
 
-				region.getGUIDs().add(guid); // adds it to this region's guid list
+				region.insertGuid(guid); // adds it to this region's guid list
 				if (!previouslyInRegion) { count++; } // if it is coming from another region, counts one more touch
 
 			}
@@ -551,7 +581,7 @@ public class Utilities {
 				
 				//If so ...
 				if (isInRegion) { 
-					region.getGUIDs().add(guid); // adds it to this region's guids list
+					region.insertGuid(guid); // adds it to this region's guids list
 				}
 				
 			}
@@ -563,8 +593,8 @@ public class Utilities {
 	private static void clear_regions_load(List<Region> regions) {
 		
 		for (Region r : regions) {
-			r.getSearchLoad().clear();
-			r.getUpdateLoad().clear();
+			r.clearSearchLoad();
+			r.clearUpdateLoad();
 		}
 		
 	}
@@ -572,7 +602,7 @@ public class Utilities {
 	private static void clear_regions_touches(List<Region> regions) {
 		
 		for (Region r : regions) {
-			r.getGUIDs().clear();
+			r.clearGUIDs();
 			r.setSearchTouches(0);
 			r.setUpdateTouches(0);
 		}

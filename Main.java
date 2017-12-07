@@ -11,15 +11,15 @@ import java.util.TreeMap;
 
 public class Main {
 	
-	private static Map<Integer, Double> calculateConfidenceInterval(Map<Integer, List<Integer>> load, Map<Integer, Double> mean) {
+	private static Map<Integer, Double> calculateConfidenceInterval(Map<Integer, List<Double>> load, Map<Integer, Double> mean) {
 		
 		Map<Integer, Double> confidenceInterval = new TreeMap<Integer, Double>();
 
-		for (Map.Entry<Integer, List<Integer>> e : load.entrySet()) {
+		for (Map.Entry<Integer, List<Double>> e : load.entrySet()) {
 			
 			double squaredDifferenceSum = 0.0, variance = 0.0, standardDeviation = 0.0;
 			
-			for (int num : e.getValue()) {
+			for (double num : e.getValue()) {
 			
 				squaredDifferenceSum += (num - mean.get(e.getKey())) * (num - mean.get(e.getKey()));
 			
@@ -92,7 +92,7 @@ public class Main {
 			System.out.println(Utilities.JFI(oplist, regions)+"\n");
 //			System.out.println(Utilities.JFI(copyOfOplist, copyOfGUIDs, regions)+"\n");
 			
-			Map<Integer, List<Integer>> realLoad = new TreeMap<Integer, List<Integer>>();
+			Map<Integer, List<Double>> realLoad = new TreeMap<Integer, List<Double>>();
 			
 			ArrayList<Double> JFIs = new ArrayList<Double>(num_experiments);
 			
@@ -116,14 +116,14 @@ public class Main {
 					
 					int index = regions.indexOf(r)+1;
 					
-					int myUpdateLoad = r.getUpdateLoad().size();
-					int mySearchLoad = r.getSearchLoad().size();
+					double myUpdateLoad = r.getUpdateLoad();
+					double mySearchLoad = r.getSearchLoad();
 					
-					int totalLoad = myUpdateLoad+mySearchLoad;
+					double totalLoad = myUpdateLoad+mySearchLoad;
 //					int totalLoad = r.getUpdateTouches()+r.getSearchTouches();
 					
 					if (!realLoad.containsKey(index)) {
-						ArrayList<Integer> load = new ArrayList<Integer>(num_experiments);
+						ArrayList<Double> load = new ArrayList<Double>(num_experiments);
 						load.add(totalLoad);
 						realLoad.put(index, load);
 					} else {
@@ -136,16 +136,16 @@ public class Main {
 			
 			Map<Integer, Double> meanLoad = new TreeMap<Integer, Double>();
 	
-			for (Map.Entry<Integer, List<Integer>> e : realLoad.entrySet()) {
+			for (Map.Entry<Integer, List<Double>> e : realLoad.entrySet()) {
 				
-				List<Integer> load = e.getValue();
+				List<Double> load = e.getValue();
 				
-				Integer sum = 0;
-				for (Integer l : load) {
+				double sum = 0;
+				for (double l : load) {
 					sum += l;
 				}
 				
-				double avg = sum.doubleValue() / load.size();
+				double avg = sum / load.size();
 				meanLoad.put(e.getKey(), avg);
 				
 			}
