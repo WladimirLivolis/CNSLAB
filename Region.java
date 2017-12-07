@@ -1,95 +1,111 @@
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Region {
 	
 	private String name;
 	private List<PairAttributeRange> pairs;
-	private List<Search> search_load;
-	private List<Update> update_load;
+	private List<GUID> GUIDs;
+	private int update_touches;
+	private int search_touches;
+	private Map<Update, Double> update_load;
+	private Map<Search, Double> search_load;
 	
 	public Region(String name, List<PairAttributeRange> pairs) {
 		this.name = name;
 		this.pairs = new ArrayList<PairAttributeRange>(pairs.size());
 		for (PairAttributeRange pair : pairs)
 			this.pairs.add(new PairAttributeRange(pair.getAttrkey(), new Range(pair.getRange().getLow(), pair.getRange().getHigh())));
-		this.search_load = new ArrayList<Search>();
-		this.update_load = new ArrayList<Update>();
+		GUIDs = new ArrayList<GUID>();
+		update_touches = 0;
+		search_touches = 0;
+		update_load = new HashMap<Update, Double>();
+		search_load = new HashMap<Search, Double>();
 	}
 	
 	public String getName() {
-		return this.name;
+		return name;
 	}
 	
 	public List<PairAttributeRange> getPairs() {
-		return Collections.unmodifiableList(this.pairs);
+		return Collections.unmodifiableList(pairs);
 	}
 	
-	private boolean isTouch(Update update) {
-		boolean flag = true;
-		for (Attribute attr : update.getAttributes()) {
-			String u_attr = attr.getKey();    // update attribute
-			double u_value = attr.getValue(); // update value
-			for (PairAttributeRange pair : pairs) {
-				String r_attr = pair.getAttrkey();         // region attribute
-				double r_start = pair.getRange().getLow(); // region range start
-				double r_end = pair.getRange().getHigh();  // region range end 
-				if (u_attr.equals(r_attr))
-					if (u_value < r_start || u_value > r_end)
-						flag = false;
-			}
-		}
-		if (flag)
-			this.update_load.add(update);
-		return flag;
+	public int getUpdateTouches() {
+		return update_touches;
 	}
 	
-	private boolean isTouch(Search search) {
-		boolean flag = true;
-		for (PairAttributeRange qpair : search.getPairs()) {
-			String s_attr = qpair.getAttrkey();         // search attribute
-			double s_start = qpair.getRange().getLow(); // search range start
-			double s_end = qpair.getRange().getHigh();  // search range end
-			for (PairAttributeRange rpair : pairs) {
-				String r_attr = rpair.getAttrkey();         // region attribute
-				double r_start = rpair.getRange().getLow(); // region range start
-				double r_end = rpair.getRange().getHigh();  // region range end
-				if (s_attr.equals(r_attr))
-					if (s_start > s_end) {		// trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
-						if (s_start > r_end && s_end < r_start)
-							flag = false;
-					} else {					// caso normal
-						if (s_start > r_end || s_end < r_start)
-							flag = false;
-					}
-			}
-		}
-		if (flag)
-			this.search_load.add(search);
-		return flag;
+	public int getSearchTouches() {
+		return search_touches;
 	}
 	
-	public List<Update> getUpdateLoad(List<Update> uplist) {
-		this.update_load = new ArrayList<Update>();
-		for (Update up : uplist)
-			isTouch(up);
-		return Collections.unmodifiableList(this.update_load);
+	public void setUpdateTouches(int touches) {
+		this.update_touches = touches;
 	}
 	
-	public List<Search> getSearchLoad(List<Search> slist) {
-		this.search_load = new ArrayList<Search>();
-		for (Search s : slist)
-			isTouch(s);
-		return Collections.unmodifiableList(this.search_load);
+	public void setSearchTouches(int touches) {
+		this.search_touches = touches;
 	}
 	
-	public List<Update> getUpdateLoad() {
-		return Collections.unmodifiableList(this.update_load);
+	public int getNumberOfSearches() {
+		return search_load.size();
 	}
 	
-	public List<Search> getSearchLoad() {
-		return Collections.unmodifiableList(this.search_load);
+	public int getNumberOfUpdates() {
+		return update_load.size();
+	}
+	
+	public double getSearchLoad() {
+		double load = 0;
+		for (double val : search_load.values())
+			load += val;
+		return load;			
+	}
+
+	public double getUpdateLoad() {
+		double load = 0;
+		for (double val : update_load.values())
+			load += val;
+		return load;			
+	}
+	
+	public void insertSearchLoad(Search s, double weight) {
+		search_load.put(s, weight);
+	}
+	
+	public void insertUpdateLoad(Update up, double weight) {
+		update_load.put(up, weight);
+	}
+	
+	public void clearSearchLoad() {
+		search_load = new HashMap<Search, Double>();
+	}
+	
+	public void clearUpdateLoad() {
+		update_load = new HashMap<Update, Double>();
+	}
+	
+	public boolean hasThisGuid(GUID guid) {
+		return GUIDs.contains(guid);
+	}
+	
+	public void insertGuid(GUID guid) {
+		GUIDs.add(guid);
+	}
+	
+	public void removeGuid(GUID guid) {
+		GUIDs.remove(guid);
+	}
+	
+	public void clearGUIDs() {
+		GUIDs.clear();
+	}
+	
+	public List<GUID> getGUIDs() {
+		return Collections.unmodifiableList(GUIDs);
 	}
 
 }
