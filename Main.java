@@ -51,6 +51,8 @@ public class Main {
 		int num_update_new_samples = 5000;
 		int num_search_new_samples = 5000;
 		int num_experiments = 100;
+		
+		boolean touches = true;
 				
 		List<PairAttributeRange> pairs = new ArrayList<PairAttributeRange>();
 		pairs.add(new PairAttributeRange("A1", new Range(0.0, 1.0)));
@@ -76,8 +78,8 @@ public class Main {
 		for (int h = 1; h <= 2; h++) {
 			
 			// Copy Oplist & GUIDs
-//			List<GUID> copyOfGUIDs = Utilities.copyGUIDs(GUIDs);
-//			Queue<Operation> copyOfOplist = Utilities.copyOplist(oplist, copyOfGUIDs);
+			List<GUID> copyOfGUIDs = Utilities.copyGUIDs(GUIDs);
+			Queue<Operation> copyOfOplist = Utilities.copyOplist(oplist, copyOfGUIDs);
 						
 			String fileName = "experiment1.txt";
 			
@@ -89,8 +91,11 @@ public class Main {
 				regions = heuristic2.partition(GUIDs, oplist);
 			}
 			
-			System.out.println(Utilities.JFI(oplist, regions)+"\n");
-//			System.out.println(Utilities.JFI(copyOfOplist, copyOfGUIDs, regions)+"\n");
+			if (touches) {
+				System.out.println(Utilities.JFI(copyOfOplist, copyOfGUIDs, regions)+"\n");
+			} else {
+				System.out.println(Utilities.JFI(oplist, regions)+"\n");
+			}
 			
 			Map<Integer, List<Double>> realLoad = new TreeMap<Integer, List<Double>>();
 			
@@ -109,18 +114,22 @@ public class Main {
 				Queue<Operation> newOplist = Utilities.sortOperations(newSlist, newUplist, rnd);
 				
 				// Calculates JFI
-				JFIs.add(Utilities.JFI(newOplist, regions));
-//				JFIs.add(Utilities.JFI(newOplist, newGUIDs, regions));
+				if (touches) {
+					JFIs.add(Utilities.JFI(newOplist, newGUIDs, regions));
+				} else {
+					JFIs.add(Utilities.JFI(newOplist, regions));
+				}
 				
 				for (Region r : regions) {
 					
 					int index = regions.indexOf(r)+1;
 					
-					double myUpdateLoad = r.getUpdateLoad();
-					double mySearchLoad = r.getSearchLoad();
-					
-					double totalLoad = myUpdateLoad+mySearchLoad;
-//					int totalLoad = r.getUpdateTouches()+r.getSearchTouches();
+					double totalLoad = 0;
+					if (touches) {
+						totalLoad = r.getUpdateTouches()+r.getSearchTouches();
+					} else {
+						totalLoad = r.getUpdateLoad()+r.getSearchLoad();
+					}
 					
 					if (!realLoad.containsKey(index)) {
 						ArrayList<Double> load = new ArrayList<Double>(num_experiments);

@@ -1,8 +1,6 @@
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
 
@@ -367,39 +365,29 @@ public class Utilities {
 		
 		distributeGUIDsAmongRegions(regions, guids);
 		
-		Map<Region, Integer> updateTouchesPerRegion = new HashMap<Region, Integer>();
-		Map<Region, Integer> searchTouchesPerRegion = new HashMap<Region, Integer>();
-		
 		for (Operation op : oplist) {
 			
-			if (op instanceof Update) {	checkUpdateTouchesPerRegion(regions, (Update)op, updateTouchesPerRegion); }
+			if (op instanceof Update) {	checkUpdateTouchesPerRegion(regions, (Update)op); }
 			
-			if (op instanceof Search) {	checkSearchTouchesPerRegion(regions, (Search)op, searchTouchesPerRegion); }
-			
-		}
-		
-		for (Region r : regions) {
-			
-			int up_count = 0, s_count = 0;
-			up_count += updateTouchesPerRegion.get(r);
-			s_count  += searchTouchesPerRegion.get(r);
-			r.setUpdateTouches(up_count);
-			r.setSearchTouches(s_count);
+			if (op instanceof Search) {	checkSearchTouchesPerRegion(regions, (Search)op); }
 			
 		}
 		
 	}
 	
-	private static void checkUpdateTouchesPerRegion(List<Region> regions, Update up, Map<Region, Integer> map) {
-							
+	private static void checkUpdateTouchesPerRegion(List<Region> regions, Update up) {
+		
 		GUID guid = up.getGuid();
-
-		for (Region region : regions) { // iterate over regions
+		
+		Region previousRegion = null;
+		
+		// I) This first iteration over regions will look for touches due to previous GUID's positions
+		for (Region region : regions) {
 
 			boolean previouslyInRegion = true;
 			int count = 0;
 
-			// I) Checks whether this update's GUID is already in this region
+			// Checks whether this update's GUID is already in this region
 			for (Attribute attr : guid.getAttributes()) { // iterate over guid attributes
 
 				String guidAttrKey = attr.getKey();    
@@ -423,11 +411,22 @@ public class Utilities {
 			if (previouslyInRegion) {
 				count++; // counts a touch
 				if (region.hasThisGuid(guid)) { region.removeGuid(guid); } // removes it from this region's guid list
+				previousRegion = region;
 			}
+			
+			// Sets this region's update touch count
+			int previous_count = region.getUpdateTouches();
+			region.setUpdateTouches(previous_count+count);
 
+		}
+		
+		// II) This second iteration over regions will look for touches due to new GUID's positions
+		for (Region region : regions) {
+			
 			boolean comingToRegion = true;
+			int count = 0;
 
-			// II) Checks whether this update moves a GUID to this region
+			// Checks whether this update moves a GUID to this region
 			for (Attribute attr : up.getAttributes()) { // iterate over this update attributes
 
 				String updateAttrKey = attr.getKey();
@@ -453,22 +452,18 @@ public class Utilities {
 				for (Attribute attr : up.getAttributes()) { guid.set_attribute(attr.getKey(), attr.getValue()); } // updates its attributes with info from this update operation			
 
 				region.insertGuid(guid); // adds it to this region's guid list
-				if (!previouslyInRegion) { count++; } // if it is coming from another region, counts one more touch
+				if (!previousRegion.equals(region)) { count++; } // if it is coming from another region, counts one more touch
 
 			}
-
-			if (map.containsKey(region)) {
-				int previous_count = map.get(region);
-				map.put(region, count+previous_count);
-			} else {
-				map.put(region, count);
-			}
-
+			
+			// Sets this region's update touch count
+			int previous_count = region.getUpdateTouches();
+			region.setUpdateTouches(previous_count+count);
+			
 		}
-	}		
-
+	}
 	
-	private static void checkSearchTouchesPerRegion(List<Region> regions, Search s, Map<Region, Integer> map) {
+	private static void checkSearchTouchesPerRegion(List<Region> regions, Search s) {
 
 		for (Region region : regions) { // iterate over regions
 
@@ -534,14 +529,11 @@ public class Utilities {
 
 				}
 
-			} 
-
-			if (map.containsKey(region)) {
-				int previous_count = map.get(region);
-				map.put(region, count+previous_count);
-			} else {
-				map.put(region, count);
 			}
+			
+			// Sets this region's search touch counter
+			int previous_count = region.getSearchTouches();
+			region.setSearchTouches(previous_count+count);
 
 		}
 	}
