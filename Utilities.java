@@ -452,7 +452,7 @@ public class Utilities {
 				for (Attribute attr : up.getAttributes()) { guid.set_attribute(attr.getKey(), attr.getValue()); } // updates its attributes with info from this update operation			
 
 				region.insertGuid(guid); // adds it to this region's guid list
-				if (!previousRegion.equals(region)) { count++; } // if it is coming from another region, counts one more touch
+				if (!region.equals(previousRegion)) { count++; } // if it is coming from another region, counts one more touch
 
 			}
 			
