@@ -52,6 +52,8 @@ public class Main {
 		int num_search_new_samples = 5000;
 		int num_experiments = 100;
 		
+		String dist = "uniform";
+		
 		boolean touches = true;
 				
 		List<PairAttributeRange> pairs = new ArrayList<PairAttributeRange>();
@@ -68,9 +70,9 @@ public class Main {
 		HeuristicV2 heuristic2 = new HeuristicV2(num_mach, regions);
 		
 		// Generates update & search loads for training
-		List<GUID> GUIDs     = Utilities.generateGUIDs(num_GUIDs, num_attr, rnd); 
-		Queue<Update> uplist = Utilities.generateUpdateLoad(num_attr, num_update_training_samples, GUIDs, rnd);
-		Queue<Search> slist  = Utilities.generateSearchLoad(num_attr, num_search_training_samples, rnd);
+		List<GUID> GUIDs     = Utilities.generateGUIDs(num_GUIDs, num_attr, dist, rnd); 
+		Queue<Update> uplist = Utilities.generateUpdateLoad(num_attr, num_update_training_samples, GUIDs, dist, rnd);
+		Queue<Search> slist  = Utilities.generateSearchLoad(num_attr, num_search_training_samples, dist, rnd);
 		
 		// Sort operations
 		Queue<Operation> oplist = Utilities.sortOperations(slist, uplist, rnd);
@@ -106,9 +108,9 @@ public class Main {
 				rnd = new Random(i);
 				
 				// Generates new update & search loads
-				List<GUID> newGUIDs     = Utilities.generateGUIDs(num_GUIDs, num_attr, rnd); 
-				Queue<Update> newUplist = Utilities.generateUpdateLoad(num_attr, num_update_new_samples, newGUIDs, rnd);
-				Queue<Search> newSlist  = Utilities.generateSearchLoad(num_attr, num_search_new_samples, rnd);
+				List<GUID> newGUIDs     = Utilities.generateGUIDs(num_GUIDs, num_attr, dist, rnd); 
+				Queue<Update> newUplist = Utilities.generateUpdateLoad(num_attr, num_update_new_samples, newGUIDs, dist, rnd);
+				Queue<Search> newSlist  = Utilities.generateSearchLoad(num_attr, num_search_new_samples, dist, rnd);
 				
 				// Sort operations
 				Queue<Operation> newOplist = Utilities.sortOperations(newSlist, newUplist, rnd);

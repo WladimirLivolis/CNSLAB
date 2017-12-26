@@ -76,19 +76,6 @@ public class Utilities {
 		return JFI;
 	}
 	
-	public static List<GUID> generateGUIDs(int qty, int AttrNum, Random rnd) {
-		List<GUID> GUIDs = new ArrayList<GUID>(qty);
-		for (int i = 0; i < qty; i++) {
-			GUID guid = new GUID("GUID"+i);
-			for (int j = 1; j <= AttrNum; j++) {
-				double v = rnd.nextDouble();
-				guid.set_attribute("A"+j, v);
-			}
-			GUIDs.add(guid);
-		}
-		return GUIDs;
-	}
-	
 	public static List<GUID> copyGUIDs(List<GUID> GUIDs) {
 		List<GUID> newGUIDs = new ArrayList<GUID>(GUIDs.size());
 		for (GUID guid : GUIDs) {
@@ -148,13 +135,56 @@ public class Utilities {
 		return copy;
 	}
 	
-	public static Queue<Update> generateUpdateLoad(int AttrNum, int UpNum, List<GUID> GUIDs, Random rnd) {
+	private static double nextExponential(double lambda, Random rnd) {
+		double val;
+		do {
+			val = Math.log(1-rnd.nextDouble())/(-lambda);
+		} while (val > 1);
+		return val;
+	}
+	
+	private static double nextGaussian(double deviation, double mean, Random rnd) {
+		return rnd.nextGaussian()*deviation+mean;
+	}
+	
+	private static double nextVal(String dist, Random rnd) {
+		double val;
+		switch(dist.toLowerCase()) {	
+			case "normal":
+			case "gaussian":
+				val = nextGaussian(0.15, 0.5, rnd);
+				break;
+			case "exponential":
+				val = nextExponential(1, rnd);
+				break;
+			case "uniform":
+			default:
+				val = rnd.nextDouble();
+				break;
+		}
+		return val;
+	}
+	
+	public static List<GUID> generateGUIDs(int qty, int AttrNum, String dist, Random rnd) {
+		List<GUID> GUIDs = new ArrayList<GUID>(qty);
+		for (int i = 0; i < qty; i++) {
+			GUID guid = new GUID("GUID"+i);
+			for (int j = 1; j <= AttrNum; j++) {
+				double v = nextVal(dist, rnd);
+				guid.set_attribute("A"+j, v);
+			}
+			GUIDs.add(guid);
+		}
+		return GUIDs;
+	}
+	
+	public static Queue<Update> generateUpdateLoad(int AttrNum, int UpNum, List<GUID> GUIDs, String dist, Random rnd) {
 		Queue<Update> updates = new LinkedList<Update>();
 		for (int i = 0; i < UpNum; i++) {
 			GUID guid = GUIDs.get(rnd.nextInt(GUIDs.size())); // pick one of the GUIDs already created
 			Update up = new Update(guid);
 			for (int j = 1; j <= AttrNum; j++) {
-				double v = rnd.nextDouble();
+				double v = nextVal(dist, rnd);
 				up.addAttr("A"+j, v);
 			}
 			updates.add(up);
@@ -162,13 +192,13 @@ public class Utilities {
 		return updates;
 	}
 	
-	public static Queue<Search> generateSearchLoad(int AttrNum, int SNum, Random rnd) {
+	public static Queue<Search> generateSearchLoad(int AttrNum, int SNum, String dist, Random rnd) {
 		Queue<Search> searches = new LinkedList<Search>();
 		for (int i = 0; i < SNum; i++) {
 			Search s = new Search();
 			for (int j = 1; j <= AttrNum; j++) {
-				double v1 = rnd.nextDouble();
-				double v2 = rnd.nextDouble();
+				double v1 = nextVal(dist, rnd);
+				double v2 = nextVal(dist, rnd);
 				s.addPair("A"+j, new Range(v1, v2));
 			}
 			searches.add(s);
