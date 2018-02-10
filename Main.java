@@ -3,6 +3,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -54,12 +55,12 @@ public class Main {
 		
 		String dist = "uniform";
 		
-		boolean touches = true;
+		boolean touches = false;
 				
-		List<PairAttributeRange> pairs = new ArrayList<PairAttributeRange>();
-		pairs.add(new PairAttributeRange("A1", new Range(0.0, 1.0)));
-		pairs.add(new PairAttributeRange("A2", new Range(0.0, 1.0)));
-		pairs.add(new PairAttributeRange("A3", new Range(0.0, 1.0)));
+		Map<String, Range> pairs = new HashMap<String, Range>();
+		pairs.put("A1", new Range(0.0, 1.0));
+		pairs.put("A2", new Range(0.0, 1.0));
+		pairs.put("A3", new Range(0.0, 1.0));
 		
 		Region region = new Region("R1", pairs);		
 		

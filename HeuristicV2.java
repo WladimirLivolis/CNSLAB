@@ -19,7 +19,7 @@ public class HeuristicV2 {
 		
 		Map<Double, Integer> touchesMap = new TreeMap<Double, Integer>();
 		
-		int index = 0; // here we define the attribute axis we are splitting. For simplicity's sake, we pick first attribute.
+		String axis = "A1"; // here we define the attribute axis we are splitting. For simplicity's sake, we pick first attribute.
 
 		for (Operation op : oplist) { // iterate over all operations
 			
@@ -28,8 +28,8 @@ public class HeuristicV2 {
 				Update up = (Update)op;
 				GUID up_guid = up.getGuid(); // pick this update's guid
 				
-				double up_attr_val = up.getAttributes().get(index).getValue();        // this update's first attribute value
-				double guid_attr_val = up_guid.getAttributes().get(index).getValue(); // guid's first attribute value
+				double up_attr_val = up.getAttributes().get(axis);        // this update's first attribute value
+				double guid_attr_val = up_guid.getAttributes().get(axis); // guid's first attribute value
 				
 				// record touches
 				if (touchesMap.containsKey(guid_attr_val)) {
@@ -48,10 +48,8 @@ public class HeuristicV2 {
 				}
 				
 				// update guid's attributes with values from update
-				for (Attribute attr : up.getAttributes()) { 
-					String key = attr.getKey();
-					double val = attr.getValue();
-					up_guid.set_attribute(key, val);
+				for (Map.Entry<String, Double> up_attr : up.getAttributes().entrySet()) {
+					up_guid.setAttribute(up_attr.getKey(), up_attr.getValue());
 				}
 				
 			}
@@ -64,42 +62,37 @@ public class HeuristicV2 {
 										
 					boolean flag = true;
 					
-					for (PairAttributeRange pair : s.getPairs()) {
+					for (Map.Entry<String, Range> pair : s.getPairs().entrySet()) {
 						
-						String range_attr  = pair.getAttrkey();         // this search's range attribute
-						double range_start = pair.getRange().getLow();  // this search's range start point
-						double range_end   = pair.getRange().getHigh(); // this search's range end point
+						String range_attr  = pair.getKey();             // this search's range attribute
+						double range_start = pair.getValue().getLow();  // this search's range start point
+						double range_end   = pair.getValue().getHigh(); // this search's range end point
 						
-						for (Attribute a : guid.getAttributes()) {
+						if (guid.getAttributes().containsKey(range_attr)) {
+													
+							double guid_attr_val = guid.getAttributes().get(range_attr); // guid's attribute value
 							
-							String guid_attr_key = a.getKey();   // guid's attribute
-							double guid_attr_val = a.getValue(); // guid's attribute value
-							
-							if (guid_attr_key.equals(range_attr)) {
-								
-								if (range_start > range_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
-									
-									if (guid_attr_val < range_start && guid_attr_val > range_end) {
-										flag = false;
-									}
-									
-								} else {
-									
-									if (guid_attr_val < range_start || guid_attr_val > range_end) {
-										flag = false;
-									}
-									
+							if (range_start > range_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
+
+								if (guid_attr_val < range_start && guid_attr_val > range_end) {
+									flag = false;
 								}
-								
+
+							} else {
+
+								if (guid_attr_val < range_start || guid_attr_val > range_end) {
+									flag = false;
+								}
+
 							}
-							
+
 						}
 						
 					}
 					
 					if (flag) { // check whether this guid is in this search's range
 						
-						double guid_attr_val = guid.getAttributes().get(index).getValue(); // guid's first attribute value
+						double guid_attr_val = guid.getAttributes().get(axis); // guid's first attribute value
 						
 						// if so, it's a touch
 						if (touchesMap.containsKey(guid_attr_val)) {
@@ -132,7 +125,8 @@ public class HeuristicV2 {
 		Map<Double, Integer> touchesMap = updateAndSearchTouchesCounter(GUIDs, oplist);
 		Map<Double, Double> quantiles = new TreeMap<Double, Double>();
 		
-		int total_load = 0, n_regions = (int) Math.sqrt(num_machines), count = 0, index = 0;
+		int total_load = 0, n_regions = (int) Math.sqrt(num_machines), count = 0;
+		String axis = "A1";
 		
 		// calculates total load
 		for (int val : touchesMap.values()) { total_load += val; }
@@ -168,13 +162,14 @@ public class HeuristicV2 {
 		
 		count = 1;
 		for (int v = 0; v <= values.size(); v++) {
-			Region newRegion = new Region("R"+count++, regions.get(index).getPairs());
-			if (v == values.size()) { newRegion.getPairs().get(index).setRange(values.get(v-1), null); }
-			else {
-				if (v == 0)
-					newRegion.getPairs().get(index).setRange(null, values.get(v));
-				else
-					newRegion.getPairs().get(index).setRange(values.get(v-1), values.get(v)); }
+			Region newRegion = new Region("R"+count++, regions.get(0).getPairs());
+			if (v == 0) {
+				newRegion.setPair(axis, 0, values.get(v));
+			} else if ( v > 0 && v < values.size() ) {
+				newRegion.setPair(axis, values.get(v-1), values.get(v));
+			} else {
+				newRegion.setPair(axis, values.get(v-1), 1);
+			}
 			newRegions.add(newRegion);
 		}
 		
@@ -190,13 +185,13 @@ public class HeuristicV2 {
 		for (Region region : regions) {
 			str.append(region.getName());
 			str.append(" = [ ");
-			for (PairAttributeRange pair : region.getPairs()) {
+			for (Map.Entry<String, Range> pair : region.getPairs().entrySet()) {
 				str.append("(");
-				str.append(pair.getAttrkey());
+				str.append(pair.getKey());
 				str.append(",[");
-				str.append(pair.getRange().getLow());
+				str.append(pair.getValue().getLow());
 				str.append(",");
-				str.append(pair.getRange().getHigh());
+				str.append(pair.getValue().getHigh());
 				str.append("]) ");	
 			}
 			str.append("] ");
