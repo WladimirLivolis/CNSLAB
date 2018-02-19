@@ -7,18 +7,19 @@ import java.util.Map;
 public class Region {
 	
 	private String name;
-	private List<PairAttributeRange> pairs;
+	private Map<String, Range> pairs;
 	private List<GUID> GUIDs;
 	private int update_touches;
 	private int search_touches;
 	private Map<Update, Double> update_load;
 	private Map<Search, Double> search_load;
 	
-	public Region(String name, List<PairAttributeRange> pairs) {
+	public Region(String name, Map<String, Range> pairs) {
 		this.name = name;
-		this.pairs = new ArrayList<PairAttributeRange>(pairs.size());
-		for (PairAttributeRange pair : pairs)
-			this.pairs.add(new PairAttributeRange(pair.getAttrkey(), new Range(pair.getRange().getLow(), pair.getRange().getHigh())));
+		this.pairs = new HashMap<String, Range>(pairs.size());
+		for (Map.Entry<String, Range> pair : pairs.entrySet()) { 
+			this.setPair(pair.getKey(), pair.getValue().getLow(), pair.getValue().getHigh()); 
+		}
 		GUIDs = new ArrayList<GUID>();
 		update_touches = 0;
 		search_touches = 0;
@@ -30,8 +31,17 @@ public class Region {
 		return name;
 	}
 	
-	public List<PairAttributeRange> getPairs() {
-		return Collections.unmodifiableList(pairs);
+	public void setPair(String attrkey, Range range) {
+		pairs.put(attrkey, range);
+	}
+	
+	public void setPair(String attrkey, double low, double high) {
+		Range range = new Range(low, high);
+		pairs.put(attrkey, range);
+	}
+	
+	public Map<String, Range> getPairs() {
+		return Collections.unmodifiableMap(pairs);
 	}
 	
 	public int getUpdateTouches() {

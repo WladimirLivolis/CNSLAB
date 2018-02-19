@@ -1,37 +1,27 @@
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class GUID {
 	
 	private String name;
-	private List<Attribute> attributes;
+	private Map<String, Double> attributes;
 	
 	public GUID(String name) {
 		this.name = name;
-		this.attributes = new ArrayList<Attribute>();
+		this.attributes = new HashMap<String, Double>();
 	}
 	
 	public String getName() {
 		return name;
 	}
 	
-	public List<Attribute> getAttributes() {
-		return Collections.unmodifiableList(attributes);
+	public Map<String, Double> getAttributes() {
+		return Collections.unmodifiableMap(attributes);
 	}
 	
-	public void set_attribute(String attr_key, double attr_value) {
-		boolean attr_exist = false;
-		for (Attribute a : attributes) {
-			if (a.getKey().equals(attr_key)) {
-				attr_exist = true;
-				a.setValue(attr_value);
-			}
-		}
-		if (!attr_exist) {
-			Attribute new_attr = new Attribute(attr_key, attr_value);
-			attributes.add(new_attr);
-		}
+	public void setAttribute(String attr_key, double attr_value) {
+		attributes.put(attr_key, attr_value);
 	}
 
 }

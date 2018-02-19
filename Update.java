@@ -1,39 +1,38 @@
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Update implements Operation{
 	
 	private GUID guid;
-	private List<Attribute> attributes;
-	
+	private Map<String, Double> attributes; 
+		
 	public Update(String guid) {
 		this.guid = new GUID(guid);
-		this.attributes = new ArrayList<Attribute>();
+		this.attributes = new HashMap<String, Double>();
 	}
 	
 	public Update(GUID guid) {
 		this.guid = guid;
-		this.attributes = new ArrayList<Attribute>();
+		this.attributes = new HashMap<String, Double>();
 	}
 	
 	public GUID getGuid() {
 		return guid;
 	}
 	
-	public void addAttr(String key, double value) {
-		Attribute attr = new Attribute(key, value);
-		attributes.add(attr);
+	public void setAttr(String key, double value) {
+		attributes.put(key, value);
 	}
 		
-	public List<Attribute> getAttributes() {
-		return Collections.unmodifiableList(this.attributes);
+	public Map<String, Double> getAttributes() {
+		return Collections.unmodifiableMap(attributes);
 	}
 	
 	public String toString() {
 		StringBuilder str = new StringBuilder("[");
 		str.append(guid+",");
-		for (Attribute attr : this.attributes) {
+		for (Map.Entry<String, Double> attr : attributes.entrySet()) {
 			str.append("\n(");
 			str.append(attr.getKey());
 			str.append(",");
