@@ -4,20 +4,15 @@ import java.util.Map;
 
 public class Update implements Operation{
 	
-	private GUID guid;
+	private int guid;
 	private Map<String, Double> attributes; 
 		
-	public Update(String guid) {
-		this.guid = new GUID(guid);
-		this.attributes = new HashMap<String, Double>();
-	}
-	
-	public Update(GUID guid) {
+	public Update(int guid) {
 		this.guid = guid;
 		this.attributes = new HashMap<String, Double>();
 	}
 	
-	public GUID getGuid() {
+	public int getGuid() {
 		return guid;
 	}
 	

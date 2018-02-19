@@ -57,10 +57,11 @@ public class Main {
 		
 		boolean touches = false;
 				
-		Map<String, Range> pairs = new HashMap<String, Range>();
-		pairs.put("A1", new Range(0.0, 1.0));
-		pairs.put("A2", new Range(0.0, 1.0));
-		pairs.put("A3", new Range(0.0, 1.0));
+		Map<String, Range> pairs = new HashMap<String, Range>(); // pairs attribute-range
+		
+		for (int i = 1; i <= num_attr; i++) {
+			pairs.put("A"+i, new Range(0.0, 1.0));
+		}
 		
 		Region region = new Region("R1", pairs);		
 		
@@ -70,9 +71,10 @@ public class Main {
 		HeuristicV1 heuristic1 = new HeuristicV1(num_mach, regions);
 		HeuristicV2 heuristic2 = new HeuristicV2(num_mach, regions);
 		
+		Map<Integer, Map<String, Double>> GUIDs = new TreeMap<Integer, Map<String, Double>>();
+		
 		// Generates update & search loads for training
-		List<GUID> GUIDs     = Utilities.generateGUIDs(num_GUIDs, num_attr, dist, rnd); 
-		Queue<Update> uplist = Utilities.generateUpdateLoad(num_attr, num_update_training_samples, GUIDs, dist, rnd);
+		Queue<Update> uplist = Utilities.generateUpdateLoad(num_attr, num_update_training_samples, GUIDs, num_GUIDs, dist, rnd);
 		Queue<Search> slist  = Utilities.generateSearchLoad(num_attr, num_search_training_samples, dist, rnd);
 		
 		// Sort operations
@@ -81,8 +83,7 @@ public class Main {
 		for (int h = 1; h <= 2; h++) {
 			
 			// Copy Oplist & GUIDs
-			List<GUID> copyOfGUIDs = Utilities.copyGUIDs(GUIDs);
-			Queue<Operation> copyOfOplist = Utilities.copyOplist(oplist, copyOfGUIDs);
+			Map<Integer, Map<String, Double>> copyOfGUIDs = Utilities.copyGUIDs(GUIDs);
 						
 			String fileName = "experiment1.txt";
 			
@@ -95,7 +96,7 @@ public class Main {
 			}
 			
 			if (touches) {
-				System.out.println(Utilities.JFI(copyOfOplist, copyOfGUIDs, regions)+"\n");
+				System.out.println(Utilities.JFI(oplist, copyOfGUIDs, regions)+"\n");
 			} else {
 				System.out.println(Utilities.JFI(oplist, regions)+"\n");
 			}
@@ -108,9 +109,10 @@ public class Main {
 				
 				rnd = new Random(i);
 				
+				Map<Integer, Map<String, Double>> newGUIDs = new TreeMap<Integer, Map<String, Double>>();
+				
 				// Generates new update & search loads
-				List<GUID> newGUIDs     = Utilities.generateGUIDs(num_GUIDs, num_attr, dist, rnd); 
-				Queue<Update> newUplist = Utilities.generateUpdateLoad(num_attr, num_update_new_samples, newGUIDs, dist, rnd);
+				Queue<Update> newUplist = Utilities.generateUpdateLoad(num_attr, num_update_new_samples, newGUIDs, num_GUIDs, dist, rnd);
 				Queue<Search> newSlist  = Utilities.generateSearchLoad(num_attr, num_search_new_samples, dist, rnd);
 				
 				// Sort operations

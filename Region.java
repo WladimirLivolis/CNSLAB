@@ -8,7 +8,7 @@ public class Region {
 	
 	private String name;
 	private Map<String, Range> pairs;
-	private List<GUID> GUIDs;
+	private List<Integer> GUIDs;
 	private int update_touches;
 	private int search_touches;
 	private Map<Update, Double> update_load;
@@ -20,7 +20,7 @@ public class Region {
 		for (Map.Entry<String, Range> pair : pairs.entrySet()) { 
 			this.setPair(pair.getKey(), pair.getValue().getLow(), pair.getValue().getHigh()); 
 		}
-		GUIDs = new ArrayList<GUID>();
+		GUIDs = new ArrayList<Integer>();
 		update_touches = 0;
 		search_touches = 0;
 		update_load = new HashMap<Update, Double>();
@@ -98,23 +98,23 @@ public class Region {
 		update_load = new HashMap<Update, Double>();
 	}
 	
-	public boolean hasThisGuid(GUID guid) {
+	public boolean hasThisGuid(int guid) {
 		return GUIDs.contains(guid);
 	}
 	
-	public void insertGuid(GUID guid) {
+	public void insertGuid(int guid) {
 		GUIDs.add(guid);
 	}
 	
-	public void removeGuid(GUID guid) {
-		GUIDs.remove(guid);
+	public void removeGuid(int guid) {
+		GUIDs.remove((Integer)guid);
 	}
 	
 	public void clearGUIDs() {
 		GUIDs.clear();
 	}
 	
-	public List<GUID> getGUIDs() {
+	public List<Integer> getGUIDs() {
 		return Collections.unmodifiableList(GUIDs);
 	}
 

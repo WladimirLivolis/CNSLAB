@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -15,9 +16,10 @@ public class HeuristicV2 {
 		this.regions = regions;
 	}
 	
-	private Map<Double, Integer> updateAndSearchTouchesCounter(List<GUID> GUIDs, Queue<Operation> oplist) {
+	private Map<Double, Integer> updateAndSearchTouchesCounter(Map<Integer, Map<String, Double>> GUIDs, Queue<Operation> oplist) {
 		
-		Map<Double, Integer> touchesMap = new TreeMap<Double, Integer>();
+		Map<Double, Integer> touchesPerPoint = new TreeMap<Double, Integer>();
+		Map<Double, Integer> guidsPerPoint   = new TreeMap<Double, Integer>();
 		
 		String axis = "A1"; // here we define the attribute axis we are splitting. For simplicity's sake, we pick first attribute.
 
@@ -26,30 +28,50 @@ public class HeuristicV2 {
 			if (op instanceof Update) {
 				
 				Update up = (Update)op;
-				GUID up_guid = up.getGuid(); // pick this update's guid
+				int up_guid = up.getGuid(); // pick this update's guid
 				
-				double up_attr_val = up.getAttributes().get(axis);        // this update's first attribute value
-				double guid_attr_val = up_guid.getAttributes().get(axis); // guid's first attribute value
+				double up_attr_val = up.getAttributes().get(axis);   // this update's first attribute value
+				double guid_attr_val = -1;
 				
-				// record touches
-				if (touchesMap.containsKey(guid_attr_val)) {
-					int previous_count = touchesMap.get(guid_attr_val);
-					touchesMap.put(guid_attr_val, previous_count++);
-				} else {
-					touchesMap.put(guid_attr_val, 1);
-				}
-				if (up_attr_val != guid_attr_val) {
-					if (touchesMap.containsKey(up_attr_val)) {
-						int previous_count = touchesMap.get(up_attr_val);
-						touchesMap.put(up_attr_val, previous_count++);
+				if (GUIDs.containsKey(up_guid)) { // check whether there was a previous value for this guid's attribute
+				
+					guid_attr_val = GUIDs.get(up_guid).get(axis); // guid's first attribute value
+					
+					if (touchesPerPoint.containsKey(guid_attr_val)) {
+						int previous_count = touchesPerPoint.get(guid_attr_val);
+						touchesPerPoint.put(guid_attr_val, previous_count++);
 					} else {
-						touchesMap.put(up_attr_val, 1);
+						touchesPerPoint.put(guid_attr_val, 1);
 					}
+					
+					if (guidsPerPoint.containsKey(guid_attr_val)) {
+						int previous_count = guidsPerPoint.get(guid_attr_val);
+						guidsPerPoint.put(guid_attr_val, previous_count--);
+					}
+					
+				}
+				
+				if (up_attr_val != guid_attr_val) { // check whether this update modifies this attribute value
+					
+					if (touchesPerPoint.containsKey(up_attr_val)) {
+						int previous_count = touchesPerPoint.get(up_attr_val);
+						touchesPerPoint.put(up_attr_val, previous_count++);
+					} else {
+						touchesPerPoint.put(up_attr_val, 1);
+					}
+					
+				}
+				
+				if (guidsPerPoint.containsKey(up_attr_val)) {
+					int previous_count = guidsPerPoint.get(up_attr_val);
+					guidsPerPoint.put(up_attr_val, previous_count++);
 				}
 				
 				// update guid's attributes with values from update
+				Map<String, Double> guid_attr = new HashMap<String, Double>();
+				GUIDs.put(up_guid, guid_attr);
 				for (Map.Entry<String, Double> up_attr : up.getAttributes().entrySet()) {
-					up_guid.setAttribute(up_attr.getKey(), up_attr.getValue());
+					guid_attr.put(up_attr.getKey(), up_attr.getValue());
 				}
 				
 			}
@@ -58,48 +80,23 @@ public class HeuristicV2 {
 				
 				Search s = (Search)op;
 				
-				for (GUID guid : GUIDs) {
-										
-					boolean flag = true;
+				for (Map.Entry<Double, Integer> e : guidsPerPoint.entrySet()) {
 					
-					for (Map.Entry<String, Range> pair : s.getPairs().entrySet()) {
-						
-						String range_attr  = pair.getKey();             // this search's range attribute
-						double range_start = pair.getValue().getLow();  // this search's range start point
-						double range_end   = pair.getValue().getHigh(); // this search's range end point
-						
-						if (guid.getAttributes().containsKey(range_attr)) {
-													
-							double guid_attr_val = guid.getAttributes().get(range_attr); // guid's attribute value
-							
-							if (range_start > range_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
-
-								if (guid_attr_val < range_start && guid_attr_val > range_end) {
-									flag = false;
-								}
-
-							} else {
-
-								if (guid_attr_val < range_start || guid_attr_val > range_end) {
-									flag = false;
-								}
-
-							}
-
-						}
-						
-					}
+					double point = e.getKey();
 					
-					if (flag) { // check whether this guid is in this search's range
+					double search_low_range  = s.getPairs().get(axis).getLow();
+					double search_high_range = s.getPairs().get(axis).getHigh();
+					
+					if (point >= search_low_range && point <= search_high_range) { // check whether this point is in this search's range
 						
-						double guid_attr_val = guid.getAttributes().get(axis); // guid's first attribute value
+						int touchesOnThisPoint = e.getValue();
 						
-						// if so, it's a touch
-						if (touchesMap.containsKey(guid_attr_val)) {
-							int previous_count = touchesMap.get(guid_attr_val);
-							touchesMap.put(guid_attr_val, previous_count++);
+						// if so, the number of guids on this point is the number of touches on this point
+						if (touchesPerPoint.containsKey(point)) {
+							int previous_count = touchesPerPoint.get(point);
+							touchesPerPoint.put(point, previous_count+touchesOnThisPoint);
 						} else {
-							touchesMap.put(guid_attr_val, 1);
+							touchesPerPoint.put(point, touchesOnThisPoint);
 						}
 						
 					}
@@ -110,7 +107,7 @@ public class HeuristicV2 {
 			
 		}
 		
-		return touchesMap;
+		return touchesPerPoint;
 		
 	}
 	
@@ -118,7 +115,7 @@ public class HeuristicV2 {
 	 * 
 	 * Given update & search loads, we find the quantile points regarding only one attribute axis.
 	 * Then, we split the existing region at its *square root of n* - 1 quantile points, generating *square root of n* new regions. */
-	public List<Region> partition(List<GUID> GUIDs, Queue<Operation> oplist) {
+	public List<Region> partition(Map<Integer, Map<String, Double>> GUIDs, Queue<Operation> oplist) {
 		
 		/* PART-1 Identify the quantile points */
 		
