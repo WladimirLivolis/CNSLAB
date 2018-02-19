@@ -38,12 +38,12 @@ public class HeuristicV1 {
 					
 			for (Region r : regions) { // for each region in Regions
 				
-				for (PairAttributeRange p : r.getPairs()) { // for each attribute
+				for (Map.Entry<String, Range> p : r.getPairs().entrySet()) { // for each attribute
 					
 					double interval_size = 0.01;
-					int index = r.getPairs().indexOf(p);
+					String axis = p.getKey();
 					
-					for (double j = p.getRange().getLow()+interval_size; j < p.getRange().getHigh(); j+=interval_size) { // here we split the interval [0,1] into intervals of size 0.01
+					for (double j = p.getValue().getLow()+interval_size; j < p.getValue().getHigh(); j+=interval_size) { // here we split the interval [0,1] into intervals of size 0.01
 						
 						// Creates a copy of regions
 						List<Region> newRegions = Utilities.copyRegions(regions);
@@ -52,9 +52,9 @@ public class HeuristicV1 {
 						Region newRegion1 = new Region("R"+count++, r.getPairs());
 						Region newRegion2 = new Region("R"+count++, r.getPairs());
 						
-						// Sets the range for each one of the two new regions originated from this latest region split event			
-						newRegion1.getPairs().get(index).setRange(null, j);
-						newRegion2.getPairs().get(index).setRange(j, null);
+						// Sets the range for each one of the two new regions originated from this latest region split event
+						newRegion1.setPair(axis, r.getPairs().get(axis).getLow(), j);
+						newRegion2.setPair(axis, j, r.getPairs().get(axis).getHigh());
 						
 						// Adds the two new regions to regions and removes the old one
 						newRegions.remove(regions.indexOf(r));
@@ -93,13 +93,13 @@ public class HeuristicV1 {
 		for (Region region : regions) {
 			str.append(region.getName());
 			str.append(" = [ ");
-			for (PairAttributeRange pair : region.getPairs()) {
+			for (Map.Entry<String, Range> pair : region.getPairs().entrySet()) {
 				str.append("(");
-				str.append(pair.getAttrkey());
+				str.append(pair.getKey());
 				str.append(",[");
-				str.append(pair.getRange().getLow());
+				str.append(pair.getValue().getLow());
 				str.append(",");
-				str.append(pair.getRange().getHigh());
+				str.append(pair.getValue().getHigh());
 				str.append("]) ");	
 			}
 			str.append("] ");
