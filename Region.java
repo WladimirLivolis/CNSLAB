@@ -13,6 +13,7 @@ public class Region {
 	private int search_touches;
 	private Map<Update, Double> update_load;
 	private Map<Search, Double> search_load;
+	int iteration; // attribute only to be used on heuristic V1 partitioning
 	
 	public Region(String name, Map<String, Range> pairs) {
 		this.name = name;
