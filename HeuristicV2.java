@@ -69,10 +69,10 @@ public class HeuristicV2 {
 				
 				// update guid's attributes with values from update
 				Map<String, Double> guid_attr = new HashMap<String, Double>();
-				GUIDs.put(up_guid, guid_attr);
 				for (Map.Entry<String, Double> up_attr : up.getAttributes().entrySet()) {
 					guid_attr.put(up_attr.getKey(), up_attr.getValue());
 				}
+				GUIDs.put(up_guid, guid_attr);
 				
 			}
 			

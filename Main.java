@@ -42,7 +42,7 @@ public class Main {
 	
 	public static void main(String[] args) {
 		
-		Random rnd = new Random();
+		Random rnd = new Random(1);
 		
 		int num_attr = 3;
 		int num_mach = 64;
@@ -82,7 +82,7 @@ public class Main {
 		
 		for (int h = 1; h <= 2; h++) {
 			
-			// Copy Oplist & GUIDs
+			// Copy GUIDs in order to avoid its modification because of JFI method
 			Map<Integer, Map<String, Double>> copyOfGUIDs = Utilities.copyGUIDs(GUIDs);
 						
 			String fileName = "experiment1.txt";

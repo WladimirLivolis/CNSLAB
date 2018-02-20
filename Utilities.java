@@ -332,7 +332,7 @@ public class Utilities {
 		Region previousRegion = null;
 		
 		if (guids.containsKey(guid)) { // check whether there was a previous position
-		
+			
 			// I) This first iteration over regions will look for touches due to previous GUID's positions
 			for (Region region : regions) {
 	
@@ -399,10 +399,10 @@ public class Utilities {
 
 				// updates its attributes with info from this update operation
 				Map<String, Double> guid_attr = new HashMap<String, Double>();
-				guids.put(guid, guid_attr);
 				for (Map.Entry<String, Double> up_attr : up.getAttributes().entrySet()) {
 					guid_attr.put(up_attr.getKey(), up_attr.getValue());
 				}
+				guids.put(guid, guid_attr);
 
 				region.insertGuid(guid); // adds it to this region's guid list
 				if (!region.equals(previousRegion)) { count++; } // if it is coming from another region, counts one more touch
@@ -483,45 +483,6 @@ public class Utilities {
 
 		}
 	}
-			
-//	private static void distributeGUIDsAmongRegions(List<Region> regions, List<GUID> guids) {
-//		
-//		for (GUID guid : guids) { // iterate over GUIDs
-//			
-//			for (Region region : regions) { // iterate over regions
-//				
-//				boolean isInRegion = true;
-//				
-//				for (Map.Entry<String, Double> attr : guid.getAttributes().entrySet()) { // iterate over this guid's attributes
-//					
-//					String guidAttrKey = attr.getKey();    
-//					double guidAttrVal = attr.getValue();
-//					
-//					if (region.getPairs().containsKey(guidAttrKey)) { // check the region's range for this attribute
-//					
-//						double regionRangeStart = region.getPairs().get(guidAttrKey).getLow(); 
-//						double regionRangeEnd = region.getPairs().get(guidAttrKey).getHigh();
-//						
-//						if (guidAttrVal < regionRangeStart || guidAttrVal > regionRangeEnd) { // checks whether guid is in this region
-//
-//							isInRegion = false;
-//
-//						}
-//							
-//					}
-//					
-//				}
-//				
-//				//If so ...
-//				if (isInRegion) { 
-//					region.insertGuid(guid); // adds it to this region's guids list
-//				}
-//				
-//			}
-//			
-//		}
-//		
-//	}
 	
 	private static void clear_regions_load(List<Region> regions) {
 		
