@@ -1,9 +1,11 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
+import java.util.TreeMap;
 
 public class Utilities {
 	
@@ -44,7 +46,7 @@ public class Utilities {
 	
 	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. 
 	 * This JFI is based on search & update touches per region. */
-	public static double JFI(Queue<Operation> oplist, List<GUID> GUIDs, List<Region> rlist) {
+	public static double JFI(Queue<Operation> oplist, Map<Integer, Map<String, Double>> GUIDs, List<Region> rlist) {
 		
 		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0;
 		
@@ -77,55 +79,26 @@ public class Utilities {
 		return JFI;
 	}
 	
-	public static List<GUID> copyGUIDs(List<GUID> GUIDs) {
-		List<GUID> newGUIDs = new ArrayList<GUID>(GUIDs.size());
-		for (GUID guid : GUIDs) {
-			GUID copy = new GUID(guid.getName());
-			for (Map.Entry<String, Double> attr : guid.getAttributes().entrySet()) {
-				copy.setAttribute(attr.getKey(), attr.getValue());
-			}
-			newGUIDs.add(copy);
-		}
-		return newGUIDs;
-	}
-	
-	public static Queue<Operation> copyOplist(Queue<Operation> oplist, List<GUID> copyOfGUIDs) {
-		Queue<Operation> newOplist = new LinkedList<Operation>();
-		for (Operation op : oplist) {
+	public static Map<Integer, Map<String, Double>> copyGUIDs(Map<Integer, Map<String, Double>> GUIDs) {
+		
+		Map<Integer, Map<String, Double>> copy = new TreeMap<Integer, Map<String, Double>>();
+		
+		for (Map.Entry<Integer, Map<String, Double>> guid : GUIDs.entrySet()) {
 			
-			if (op instanceof Update) {
+			int guidCopy = guid.getKey();
+			Map<String, Double> attrCopy = new HashMap<String, Double>();
+			
+			for (Map.Entry<String, Double> attr : guid.getValue().entrySet()) {
 				
-				Update up = (Update)op;
-				Update copy = null;
-				
-				for (GUID guid : copyOfGUIDs) {
-					if (guid.getName().equals(up.getGuid().getName())) {
-						copy = new Update(guid);
-					}
-				}
-				
-				newOplist.add(copy);				
+				attrCopy.put(attr.getKey(), attr.getValue());
 				
 			}
 			
-			if (op instanceof Search) {
-				
-				Search s = (Search)op;
-				Search copy = new Search();
-				
-				for (Map.Entry<String, Range> pair : s.getPairs().entrySet()) {
-					
-					copy.setPair(pair.getKey(), pair.getValue().getLow(), pair.getValue().getHigh());
-					
-				}
-				
-				newOplist.add(copy);
-				
-			}
+			copy.put(guidCopy, attrCopy);
 			
 		}
 		
-		return newOplist;
+		return copy;
 		
 	}
 	
@@ -166,23 +139,10 @@ public class Utilities {
 		return val;
 	}
 	
-	public static List<GUID> generateGUIDs(int qty, int AttrNum, String dist, Random rnd) {
-		List<GUID> GUIDs = new ArrayList<GUID>(qty);
-		for (int i = 0; i < qty; i++) {
-			GUID guid = new GUID("GUID"+i);
-			for (int j = 1; j <= AttrNum; j++) {
-				double v = nextVal(dist, rnd);
-				guid.setAttribute("A"+j, v);
-			}
-			GUIDs.add(guid);
-		}
-		return GUIDs;
-	}
-	
-	public static Queue<Update> generateUpdateLoad(int AttrNum, int UpNum, List<GUID> GUIDs, String dist, Random rnd) {
+	public static Queue<Update> generateUpdateLoad(int AttrNum, int UpNum, Map<Integer, Map<String, Double>> GUIDs, int numGuids, String dist, Random rnd) {
 		Queue<Update> updates = new LinkedList<Update>();
 		for (int i = 0; i < UpNum; i++) {
-			GUID guid = GUIDs.get(rnd.nextInt(GUIDs.size())); // pick one of the GUIDs already created
+			int guid = rnd.nextInt(numGuids) + 1;
 			Update up = new Update(guid);
 			for (int j = 1; j <= AttrNum; j++) {
 				double v = nextVal(dist, rnd);
@@ -351,62 +311,64 @@ public class Utilities {
 		return operations;
 	}
 	
-	public static void checkTouchesPerRegion(List<Region> regions, List<GUID> guids, Queue<Operation> oplist) {
+	public static void checkTouchesPerRegion(List<Region> regions, Map<Integer, Map<String, Double>> guids, Queue<Operation> oplist) {
 		
 		clear_regions_touches(regions);
 		
-		distributeGUIDsAmongRegions(regions, guids);
-		
 		for (Operation op : oplist) {
 			
-			if (op instanceof Update) {	checkUpdateTouchesPerRegion(regions, (Update)op); }
+			if (op instanceof Update) {	checkUpdateTouchesPerRegion(regions, guids, (Update)op); }
 			
-			if (op instanceof Search) {	checkSearchTouchesPerRegion(regions, (Search)op); }
+			if (op instanceof Search) {	checkSearchTouchesPerRegion(regions, guids, (Search)op); }
 			
 		}
 		
 	}
 	
-	private static void checkUpdateTouchesPerRegion(List<Region> regions, Update up) {
+	private static void checkUpdateTouchesPerRegion(List<Region> regions, Map<Integer, Map<String, Double>> guids, Update up) {
 		
-		GUID guid = up.getGuid();
+		int guid = up.getGuid();
 		
 		Region previousRegion = null;
 		
-		// I) This first iteration over regions will look for touches due to previous GUID's positions
-		for (Region region : regions) {
-
-			boolean previouslyInRegion = true;
-			int count = 0;
-
-			// Checks whether this update's GUID is already in this region
-			for (Map.Entry<String, Double> attr : guid.getAttributes().entrySet()) { // iterate over guid attributes
-
-				String guidAttrKey = attr.getKey();    
-				double guidAttrVal = attr.getValue();
-				
-				if (region.getPairs().containsKey(guidAttrKey)) { // check the region's range for this attribute
-
-					double regionRangeStart = region.getPairs().get(guidAttrKey).getLow(); 
-					double regionRangeEnd   = region.getPairs().get(guidAttrKey).getHigh(); 
-
-					if (guidAttrVal < regionRangeStart || guidAttrVal > regionRangeEnd) { // checks whether guid is in this region
-						previouslyInRegion = false;
+		if (guids.containsKey(guid)) { // check whether there was a previous position
+			
+			// I) This first iteration over regions will look for touches due to previous GUID's positions
+			for (Region region : regions) {
+	
+				boolean previouslyInRegion = true;
+				int count = 0;
+	
+				// Checks whether this update's GUID is already in this region
+				for (Map.Entry<String, Double> attr : guids.get(guid).entrySet()) { // iterate over guid attributes
+	
+					String guidAttrKey = attr.getKey();    
+					double guidAttrVal = attr.getValue();
+					
+					if (region.getPairs().containsKey(guidAttrKey)) { // check the region's range for this attribute
+	
+						double regionRangeStart = region.getPairs().get(guidAttrKey).getLow(); 
+						double regionRangeEnd   = region.getPairs().get(guidAttrKey).getHigh(); 
+	
+						if (guidAttrVal < regionRangeStart || guidAttrVal > regionRangeEnd) { // checks whether guid is in this region
+							previouslyInRegion = false;
+						}
 					}
 				}
+	
+				// If so ...
+				if (previouslyInRegion) {
+					count++; // counts a touch
+					if (region.hasThisGuid(guid)) { region.removeGuid(guid); } // removes it from this region's guid list
+					previousRegion = region;
+				}
+				
+				// Sets this region's update touch count
+				int previous_count = region.getUpdateTouches();
+				region.setUpdateTouches(previous_count+count);
+	
 			}
-
-			// If so ...
-			if (previouslyInRegion) {
-				count++; // counts a touch
-				if (region.hasThisGuid(guid)) { region.removeGuid(guid); } // removes it from this region's guid list
-				previousRegion = region;
-			}
-			
-			// Sets this region's update touch count
-			int previous_count = region.getUpdateTouches();
-			region.setUpdateTouches(previous_count+count);
-
+		
 		}
 		
 		// II) This second iteration over regions will look for touches due to new GUID's positions
@@ -436,9 +398,11 @@ public class Utilities {
 			if (comingToRegion) {
 
 				// updates its attributes with info from this update operation
-				for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { 
-					guid.setAttribute(attr.getKey(), attr.getValue()); 
-				} 			
+				Map<String, Double> guid_attr = new HashMap<String, Double>();
+				for (Map.Entry<String, Double> up_attr : up.getAttributes().entrySet()) {
+					guid_attr.put(up_attr.getKey(), up_attr.getValue());
+				}
+				guids.put(guid, guid_attr);
 
 				region.insertGuid(guid); // adds it to this region's guid list
 				if (!region.equals(previousRegion)) { count++; } // if it is coming from another region, counts one more touch
@@ -452,7 +416,7 @@ public class Utilities {
 		}
 	}
 	
-	private static void checkSearchTouchesPerRegion(List<Region> regions, Search s) {
+	private static void checkSearchTouchesPerRegion(List<Region> regions, Map<Integer, Map<String, Double>> guids, Search s) {
 
 		for (Region region : regions) { // iterate over regions
 
@@ -484,11 +448,11 @@ public class Utilities {
 
 			if (isInRegion) {
 
-				for (GUID guid : region.getGUIDs()) { // iterate over this region's guids
+				for (int guid : region.getGUIDs()) { // iterate over this region's guids
 
 					boolean flag = true;
 
-					for (Map.Entry<String, Double> attr : guid.getAttributes().entrySet()) { // iterate over this guid's attributes
+					for (Map.Entry<String, Double> attr : guids.get(guid).entrySet()) { // iterate over this guid's attributes
 
 						String guidAttrKey = attr.getKey();    
 						double guidAttrVal = attr.getValue();
@@ -519,45 +483,6 @@ public class Utilities {
 
 		}
 	}
-			
-	private static void distributeGUIDsAmongRegions(List<Region> regions, List<GUID> guids) {
-		
-		for (GUID guid : guids) { // iterate over GUIDs
-			
-			for (Region region : regions) { // iterate over regions
-				
-				boolean isInRegion = true;
-				
-				for (Map.Entry<String, Double> attr : guid.getAttributes().entrySet()) { // iterate over this guid's attributes
-					
-					String guidAttrKey = attr.getKey();    
-					double guidAttrVal = attr.getValue();
-					
-					if (region.getPairs().containsKey(guidAttrKey)) { // check the region's range for this attribute
-					
-						double regionRangeStart = region.getPairs().get(guidAttrKey).getLow(); 
-						double regionRangeEnd = region.getPairs().get(guidAttrKey).getHigh();
-						
-						if (guidAttrVal < regionRangeStart || guidAttrVal > regionRangeEnd) { // checks whether guid is in this region
-
-							isInRegion = false;
-
-						}
-							
-					}
-					
-				}
-				
-				//If so ...
-				if (isInRegion) { 
-					region.insertGuid(guid); // adds it to this region's guids list
-				}
-				
-			}
-			
-		}
-		
-	}
 	
 	private static void clear_regions_load(List<Region> regions) {
 		
@@ -577,84 +502,5 @@ public class Utilities {
 		}
 		
 	}
-	
-//	private static void generateSearchLoadFile(int AttrNum, int SNum, Random rnd) throws IOException {
-//		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("search_load.txt")));
-//		bw.write(""+AttrNum);
-//		bw.write(" "+SNum);
-//		for (int i = 0; i < SNum; i++) {
-//			bw.write("\n/");
-//			for (int j = 1; j <= AttrNum; j++) {
-//				double v1 = rnd.nextDouble();
-//				double v2 = rnd.nextDouble();
-//				bw.write("\nA"+j);
-//				bw.write(" "+v1);
-//				bw.write(" "+v2);
-//			}
-//		}
-//		bw.close();
-//	}
-//	
-//	private static ArrayList<Search> readSearchLoadFile() throws IOException {
-//		ArrayList<Search> searches = new ArrayList<Search>();
-//		
-//		BufferedReader br = new BufferedReader(new FileReader("search_load.txt"));
-//		String[] firstLine = br.readLine().split(" ");
-//		int attrNum = Integer.parseInt(firstLine[0]);
-//		int SNum = Integer.parseInt(firstLine[1]);
-//		
-//		for (int i = 0; i < SNum; i++) {
-//			br.readLine();
-//			Search s = new Search();
-//			for (int j = 0; j < attrNum; j++) {
-//				String[] attrLine = br.readLine().split(" ");
-//				s.addPair(attrLine[0], new Range(Double.parseDouble(attrLine[1]), Double.parseDouble(attrLine[2])));
-//			}
-//			searches.add(s);
-//		}
-//		
-//		br.close();
-//		
-//		return searches;
-//	}
-//	
-//	private static void generateUpdateLoadFile(int AttrNum, int UpNum, Random rnd) throws IOException {
-//		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("update_load.txt")));
-//		bw.write(""+AttrNum);
-//		bw.write(" "+UpNum);
-//		for (int i = 0; i < UpNum; i++) {
-//			bw.write("\n/");
-//			bw.write("\nGUID"+i);
-//			for (int j = 1; j <= AttrNum; j++) {
-//				double v = rnd.nextDouble();
-//				bw.write("\nA"+j);
-//				bw.write(" "+v);
-//			}
-//		}
-//		bw.close();
-//	}
-//	
-//	private static ArrayList<Update> readUpdateLoadFile() throws IOException {
-//		ArrayList<Update> updates = new ArrayList<Update>();
-//		
-//		BufferedReader br = new BufferedReader(new FileReader("update_load.txt"));
-//		String[] firstLine = br.readLine().split(" ");
-//		int attrNum = Integer.parseInt(firstLine[0]);
-//		int upNum = Integer.parseInt(firstLine[1]);
-//		
-//		for (int i = 0; i < upNum; i++) {
-//			br.readLine();
-//			Update up = new Update(br.readLine());
-//			for (int j = 0; j < attrNum; j++) {
-//				String[] attrLine = br.readLine().split(" ");
-//				up.addAttr(attrLine[0], Double.parseDouble(attrLine[1]));
-//			}
-//			updates.add(up);
-//		}
-//		
-//		br.close();
-//		
-//		return updates;
-//	}
 
 }
