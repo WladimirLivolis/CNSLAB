@@ -42,7 +42,7 @@ public class Main {
 	
 	public static void main(String[] args) {
 		
-		Random rnd = new Random();
+		Random rnd = new Random(1);
 		
 		int num_attr = 3;
 		int num_mach = 64;
