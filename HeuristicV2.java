@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -116,58 +117,65 @@ public class HeuristicV2 {
 	 * Given update & search loads, we find the quantile points regarding only one attribute axis.
 	 * Then, we split the existing region at its *square root of n* - 1 quantile points, generating *square root of n* new regions. */
 	public List<Region> partition(Map<Integer, Map<String, Double>> GUIDs, Queue<Operation> oplist) {
-		
-		/* PART-1 Identify the quantile points */
-		
+								
 		Map<Double, Integer> touchesMap = updateAndSearchTouchesCounter(GUIDs, oplist);
-		Map<Double, Double> quantiles = new TreeMap<Double, Double>();
 		
-		int total_load = 0, n_regions = (int) Math.sqrt(num_machines), count = 0;
-		String axis = "A1";
+		int total_load = 0;
 		
 		// calculates total load
 		for (int val : touchesMap.values()) { total_load += val; }
 		
+		Queue<Double> quantiles = new LinkedList<Double>();
+
+		int n_regions = (int) Math.sqrt(num_machines);
+
+		// a quantile is 'i/n_regions', with '1 <= i <= n_regions - 1'
+		for (int i = 1; i <= n_regions-1; i++) {
+			double quantile = i/(double)n_regions;
+			quantiles.add(quantile);		
+		}
+
+		List<Region> newRegions = new ArrayList<Region>();
+		
+		String axis = "A1";
+		int count = 0, low_range = 0, max_range = 1;
+		double previous_value = low_range;
+		
 		for (double d : touchesMap.keySet()) { // iterate over the keys, which are the candidate points to be quantile
+			
+			if (quantiles.isEmpty()) { // check whether all quantile points were already found
+				
+				Region newRegion = new Region("R"+count++, regions.get(0).getPairs());
+				
+				newRegion.setPair(axis, previous_value, max_range);
+				
+				newRegions.add(newRegion);
+				
+				break;
+			}
 		
 			count += touchesMap.get(d);  // 'count' represents the total load until point 'd'
 			
-			double percent_load = count/(double)total_load;
+			double touches_percentage = count/(double)total_load;
 			
-			for (int i = n_regions-1; i > 0; i--) { // checks whether 'd' contains 'i/n_regions' of all load, with '1 <= i <= n_regions - 1'
+			double quantile = quantiles.peek();
+
+			if ( touches_percentage >= quantile ) { // if the touches percentage until 'd' is greater than or equal to 'quantile', 'd' is that 'quantile'
 				
-				double quantile = i/(double)n_regions; 
+				quantiles.poll();
 				
-				if ( percent_load >= quantile ) { // if the percent load until 'd' is greater than or equal to 'quantile', 'd' is that 'quantile'
-					
-					if (!quantiles.containsKey(quantile) && !quantiles.containsValue(d)) {
-						System.out.println("Quantile: "+quantile+" d: "+d+" load: "+percent_load);
-						quantiles.put(quantile, d);   // here we have all the quantiles, which are the points where the hyperplanes will split the axis
-						break;
-					}
-				}
+				Region newRegion = new Region("R"+count++, regions.get(0).getPairs());
+								
+				newRegion.setPair(axis, previous_value, d);
+				
+				previous_value = d;
+				
+				newRegions.add(newRegion);
+				
+				System.out.println("Quantile: "+quantile+" | quantile point: "+d+" | touches percentage: "+touches_percentage);
+
 			}
 			
-		}
-		
-		/* PART-2 Split regions at quantile points */
-		
-		ArrayList<Double> values = new ArrayList<Double>();
-		values.addAll(quantiles.values());
-				
-		List<Region> newRegions = new ArrayList<Region>();
-		
-		count = 1;
-		for (int v = 0; v <= values.size(); v++) {
-			Region newRegion = new Region("R"+count++, regions.get(0).getPairs());
-			if (v == 0) {
-				newRegion.setPair(axis, 0, values.get(v));
-			} else if ( v > 0 && v < values.size() ) {
-				newRegion.setPair(axis, values.get(v-1), values.get(v));
-			} else {
-				newRegion.setPair(axis, values.get(v-1), 1);
-			}
-			newRegions.add(newRegion);
 		}
 		
 		regions = newRegions;
