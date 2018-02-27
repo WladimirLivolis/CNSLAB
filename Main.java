@@ -55,7 +55,7 @@ public class Main {
 		
 		String dist = "uniform";
 		
-		boolean touches = false;
+		boolean touches = true;
 				
 		Map<String, Range> pairs = new HashMap<String, Range>(); // pairs attribute-range
 		
@@ -71,19 +71,14 @@ public class Main {
 		HeuristicV1 heuristic1 = new HeuristicV1(num_mach, regions);
 		HeuristicV2 heuristic2 = new HeuristicV2(num_mach, regions);
 		
-		Map<Integer, Map<String, Double>> GUIDs = new TreeMap<Integer, Map<String, Double>>();
-		
 		// Generates update & search loads for training
-		Queue<Update> uplist = Utilities.generateUpdateLoad(num_attr, num_update_training_samples, GUIDs, num_GUIDs, dist, rnd);
+		Queue<Update> uplist = Utilities.generateUpdateLoad(num_attr, num_update_training_samples, num_GUIDs, dist, rnd);
 		Queue<Search> slist  = Utilities.generateSearchLoad(num_attr, num_search_training_samples, dist, rnd);
 		
 		// Sort operations
 		Queue<Operation> oplist = Utilities.sortOperations(slist, uplist, rnd);
 		
 		for (int h = 1; h <= 2; h++) {
-			
-			// Copy GUIDs in order to avoid its modification because of JFI method
-			Map<Integer, Map<String, Double>> copyOfGUIDs = Utilities.copyGUIDs(GUIDs);
 						
 			String fileName = "experiment1.txt";
 			
@@ -92,13 +87,13 @@ public class Main {
 				regions = heuristic1.partition(oplist);
 			} else {
 				fileName = "heuristic2.txt";
-				regions = heuristic2.partition(GUIDs, oplist);
+				regions = heuristic2.partition(oplist);
 			}
 			
 			if (touches) {
-				System.out.println(Utilities.JFI(oplist, copyOfGUIDs, regions)+"\n");
+				System.out.println(Utilities.JFI_touches(oplist, regions)+"\n");
 			} else {
-				System.out.println(Utilities.JFI(oplist, regions)+"\n");
+				System.out.println(Utilities.JFI_load(oplist, regions)+"\n");
 			}
 			
 			Map<Integer, List<Double>> realLoad = new TreeMap<Integer, List<Double>>();
@@ -109,10 +104,8 @@ public class Main {
 				
 				rnd = new Random(i);
 				
-				Map<Integer, Map<String, Double>> newGUIDs = new TreeMap<Integer, Map<String, Double>>();
-				
 				// Generates new update & search loads
-				Queue<Update> newUplist = Utilities.generateUpdateLoad(num_attr, num_update_new_samples, newGUIDs, num_GUIDs, dist, rnd);
+				Queue<Update> newUplist = Utilities.generateUpdateLoad(num_attr, num_update_new_samples, num_GUIDs, dist, rnd);
 				Queue<Search> newSlist  = Utilities.generateSearchLoad(num_attr, num_search_new_samples, dist, rnd);
 				
 				// Sort operations
@@ -120,9 +113,9 @@ public class Main {
 				
 				// Calculates JFI
 				if (touches) {
-					JFIs.add(Utilities.JFI(newOplist, newGUIDs, regions));
+					JFIs.add(Utilities.JFI_touches(newOplist, regions));
 				} else {
-					JFIs.add(Utilities.JFI(newOplist, regions));
+					JFIs.add(Utilities.JFI_load(newOplist, regions));
 				}
 				
 				for (Region r : regions) {
