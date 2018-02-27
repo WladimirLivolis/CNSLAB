@@ -11,7 +11,7 @@ public class Utilities {
 	
 	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. 
 	 * This JFI is based on search & update loads per region. */
-	public static double JFI(Queue<Operation> oplist, List<Region> rlist) {
+	public static double JFI_load(Queue<Operation> oplist, List<Region> rlist) {
 		
 		double upload = 0, sload = 0, upsquare = 0, ssquare = 0;
 		
@@ -46,9 +46,11 @@ public class Utilities {
 	
 	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. 
 	 * This JFI is based on search & update touches per region. */
-	public static double JFI(Queue<Operation> oplist, Map<Integer, Map<String, Double>> GUIDs, List<Region> rlist) {
+	public static double JFI_touches(Queue<Operation> oplist, List<Region> rlist) {
 		
 		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0;
+		
+		Map<Integer, Map<String, Double>> GUIDs = new TreeMap<Integer, Map<String, Double>>();
 		
 		checkTouchesPerRegion(rlist, GUIDs, oplist);
 		
@@ -77,29 +79,6 @@ public class Utilities {
 		double JFI = ( RHO * JS ) + ( (1 - RHO) * JU );
 		
 		return JFI;
-	}
-	
-	public static Map<Integer, Map<String, Double>> copyGUIDs(Map<Integer, Map<String, Double>> GUIDs) {
-		
-		Map<Integer, Map<String, Double>> copy = new TreeMap<Integer, Map<String, Double>>();
-		
-		for (Map.Entry<Integer, Map<String, Double>> guid : GUIDs.entrySet()) {
-			
-			int guidCopy = guid.getKey();
-			Map<String, Double> attrCopy = new HashMap<String, Double>();
-			
-			for (Map.Entry<String, Double> attr : guid.getValue().entrySet()) {
-				
-				attrCopy.put(attr.getKey(), attr.getValue());
-				
-			}
-			
-			copy.put(guidCopy, attrCopy);
-			
-		}
-		
-		return copy;
-		
 	}
 	
 	public static List<Region> copyRegions(List<Region> regions) {
@@ -139,17 +118,44 @@ public class Utilities {
 		return val;
 	}
 	
-	public static Queue<Update> generateUpdateLoad(int AttrNum, int UpNum, Map<Integer, Map<String, Double>> GUIDs, int numGuids, String dist, Random rnd) {
+	public static Queue<Update> generateUpdateLoad(int AttrNum, int UpNum, int numGuids, String dist, Random rnd) {
+
+		Map<Integer, Map<String, Double>> GUIDs = new TreeMap<Integer, Map<String, Double>>();
+
 		Queue<Update> updates = new LinkedList<Update>();
+
 		for (int i = 0; i < UpNum; i++) {
+
 			int guid = rnd.nextInt(numGuids) + 1;
+
+			boolean flag = GUIDs.containsKey(guid);
+
 			Update up = new Update(guid);
+
+			Map<String, Double> pairAttributeValue = new HashMap<String, Double>(AttrNum);
+
 			for (int j = 1; j <= AttrNum; j++) {
+
+				// check whether there was a previous value for this attribute
+				if (flag) {
+					double previous_value = GUIDs.get(guid).get("A"+j);
+					up.setAttr("A"+j+"'", previous_value);
+				} else {
+					up.setAttr("A"+j+"'", -1);
+				}
+
+				// new value for this attribute
 				double v = nextVal(dist, rnd);
 				up.setAttr("A"+j, v);
+				pairAttributeValue.put("A"+j, v);
+
 			}
+
 			updates.add(up);
+			GUIDs.put(guid, pairAttributeValue);			
+
 		}
+
 		return updates;
 	}
 	
@@ -201,6 +207,7 @@ public class Utilities {
 
 					if (up_val < r_start || up_val > r_end) { // check whether update value is inside this region range
 						flag_attr = false;
+						break;
 					}
 
 				}
@@ -210,6 +217,7 @@ public class Utilities {
 			if (flag_attr) {
 
 				r.insertUpdateLoad(up, 1);
+				break;
 
 			}
 
@@ -243,6 +251,7 @@ public class Utilities {
 						if (s_start > r_end && s_end < r_start) {
 
 							flag = false;
+							break;
 
 						}
 
@@ -262,6 +271,7 @@ public class Utilities {
 						if (s_start > r_end || s_end < r_start) { // check whether both region & search ranges overlap
 
 							flag = false;
+							break;
 
 						}
 
@@ -331,58 +341,63 @@ public class Utilities {
 		
 		Region previousRegion = null;
 		
-		if (guids.containsKey(guid)) { // check whether there was a previous position
-			
-			// I) This first iteration over regions will look for touches due to previous GUID's positions
-			for (Region region : regions) {
-	
-				boolean previouslyInRegion = true;
-				int count = 0;
-	
-				// Checks whether this update's GUID is already in this region
-				for (Map.Entry<String, Double> attr : guids.get(guid).entrySet()) { // iterate over guid attributes
-	
-					String guidAttrKey = attr.getKey();    
-					double guidAttrVal = attr.getValue();
+		// I) This first iteration over regions will look for touches due to previous GUID's positions
+		for (Region region : regions) {
+
+			boolean previouslyInRegion = true;
+			int count = 0;
+
+			// Checks whether this update's GUID is already in this region
+			for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
+
+				if (!attr.getKey().contains("'")) { continue; } // here we just look into its guid attributes, i.e., the attributes ending with '
+
+				String guidAttrKey = attr.getKey().substring(0, attr.getKey().length()-1);    
+				double guidAttrVal = attr.getValue();
+
+				if (region.getPairs().containsKey(guidAttrKey)) { // check the region's range for this attribute
 					
-					if (region.getPairs().containsKey(guidAttrKey)) { // check the region's range for this attribute
-	
-						double regionRangeStart = region.getPairs().get(guidAttrKey).getLow(); 
-						double regionRangeEnd   = region.getPairs().get(guidAttrKey).getHigh(); 
-	
-						if (guidAttrVal < regionRangeStart || guidAttrVal > regionRangeEnd) { // checks whether guid is in this region
-							previouslyInRegion = false;
-						}
+					double regionRangeStart = region.getPairs().get(guidAttrKey).getLow(); 
+					double regionRangeEnd   = region.getPairs().get(guidAttrKey).getHigh(); 
+
+					if (guidAttrVal < regionRangeStart || guidAttrVal > regionRangeEnd) { // checks whether guid is in this region
+						previouslyInRegion = false;
+						break;
 					}
 				}
-	
-				// If so ...
-				if (previouslyInRegion) {
-					count++; // counts a touch
-					if (region.hasThisGuid(guid)) { region.removeGuid(guid); } // removes it from this region's guid list
-					previousRegion = region;
-				}
+			}
+
+			// If so ...
+			if (previouslyInRegion) {
+				
+				count++; // counts a touch
+				if (region.hasThisGuid(guid)) { region.removeGuid(guid); } // removes it from this region's guid list
+				previousRegion = region;
 				
 				// Sets this region's update touch count
 				int previous_count = region.getUpdateTouches();
 				region.setUpdateTouches(previous_count+count);
-	
+				
+				break;
+				
 			}
-		
+
 		}
 		
 		// II) This second iteration over regions will look for touches due to new GUID's positions
 		for (Region region : regions) {
-			
+
 			boolean comingToRegion = true;
 			int count = 0;
 
 			// Checks whether this update moves a GUID to this region
 			for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
 
+				if (attr.getKey().contains("'")) { continue; } // here we just look into this update attributes, i.e., the attributes not ending with '
+
 				String updateAttrKey = attr.getKey();
 				double updateAttrVal = attr.getValue();
-				
+
 				if (region.getPairs().containsKey(updateAttrKey)) { // check the region's range for this attribute
 
 					double regionRangeStart = region.getPairs().get(updateAttrKey).getLow(); 
@@ -390,6 +405,7 @@ public class Utilities {
 
 					if (updateAttrVal < regionRangeStart || updateAttrVal > regionRangeEnd) { // checks whether guid is coming to this region (or if it is staying in this region)
 						comingToRegion = false;
+						break;
 					}
 				}
 			}
@@ -406,12 +422,14 @@ public class Utilities {
 
 				region.insertGuid(guid); // adds it to this region's guid list
 				if (!region.equals(previousRegion)) { count++; } // if it is coming from another region, counts one more touch
+				
+				// Sets this region's update touch count
+				int previous_count = region.getUpdateTouches();
+				region.setUpdateTouches(previous_count+count);
+				
+				break;
 
 			}
-			
-			// Sets this region's update touch count
-			int previous_count = region.getUpdateTouches();
-			region.setUpdateTouches(previous_count+count);
 			
 		}
 	}
@@ -437,9 +455,9 @@ public class Utilities {
 					double regionRangeEnd   = region.getPairs().get(searchAttrKey).getHigh();
 
 					if (searchRangeStart > searchRangeEnd) {
-						if (searchRangeStart > regionRangeEnd && searchRangeEnd < regionRangeStart) { isInRegion = false; }
+						if (searchRangeStart > regionRangeEnd && searchRangeEnd < regionRangeStart) { isInRegion = false; break; }
 					} else {
-						if (searchRangeStart > regionRangeEnd || searchRangeEnd < regionRangeStart) { isInRegion = false; }
+						if (searchRangeStart > regionRangeEnd || searchRangeEnd < regionRangeStart) { isInRegion = false; break; }
 					}
 				}
 			}
@@ -463,9 +481,9 @@ public class Utilities {
 							double searchRangeEnd   = s.getPairs().get(guidAttrKey).getHigh();
 
 							if (searchRangeStart > searchRangeEnd) {
-								if (guidAttrVal < searchRangeStart && guidAttrVal > searchRangeEnd) { flag = false; }
+								if (guidAttrVal < searchRangeStart && guidAttrVal > searchRangeEnd) { flag = false; break; }
 							} else {
-								if (guidAttrVal < searchRangeStart || guidAttrVal > searchRangeEnd) { flag = false; }
+								if (guidAttrVal < searchRangeStart || guidAttrVal > searchRangeEnd) { flag = false; break; }
 							}
 						}
 
