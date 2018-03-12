@@ -44,13 +44,13 @@ public class Main {
 		
 		Random rnd = new Random();
 		
-		int num_attr = 3;
+		int num_attr = 1;
 		int num_mach = 64;
-		int num_GUIDs = 500;
-		int num_update_training_samples = 5000;
-		int num_search_training_samples = 5000;
-		int num_update_new_samples = 5000;
-		int num_search_new_samples = 5000;
+		int num_max_guids = 500;
+		int num_update_training_samples = 10000;
+		int num_search_training_samples = 10000;
+		int num_update_new_samples = 10000;
+		int num_search_new_samples = 10000;
 		int num_experiments = 100;
 		
 		String dist = "uniform";
@@ -63,40 +63,44 @@ public class Main {
 			pairs.put("A"+i, new Range(0.0, 1.0));
 		}
 		
-		Region region = new Region("R1", pairs);		
+		Region region = new Region("R1", pairs);	
 		
 		List<Region> regions = new ArrayList<Region>();
 		regions.add(region);
 		
 		HeuristicV1 heuristic1 = new HeuristicV1(num_mach, regions);
 		HeuristicV2 heuristic2 = new HeuristicV2(num_mach, regions);
-		
+		HeuristicV2 heuristic3 = new HeuristicV2(num_mach, regions);
+				
 		// Generates update & search loads for training
-		Queue<Update> uplist = Utilities.generateUpdateLoad(num_attr, num_update_training_samples, num_GUIDs, dist, rnd);
+		Queue<Update> uplist = Utilities.generateUpdateLoad(num_attr, num_update_training_samples, num_max_guids, dist, rnd);
 		Queue<Search> slist  = Utilities.generateSearchLoad(num_attr, num_search_training_samples, dist, rnd);
 		
 		// Sort operations
 		Queue<Operation> oplist = Utilities.sortOperations(slist, uplist, rnd);
 		
-		for (int h = 1; h <= 2; h++) {
+		for (int h = 1; h <= 3; h++) {
 						
-			String fileName = "experiment1.txt";
+			String fileName;
 			
 			if (h==1) {
 				fileName = "heuristic1.txt";
 				regions = heuristic1.partition(oplist);
-			} else {
+			} else if (h==2) {
 				fileName = "heuristic2.txt";
-				regions = heuristic2.partition(oplist);
+				regions = heuristic2.partition("touches", oplist);
+			} else {
+				fileName = "heuristic3.txt";
+				regions = heuristic3.partition("load", oplist);
 			}
 			
 			if (touches) {
-				System.out.println(Utilities.JFI_touches(oplist, regions)+"\n");
+				System.out.println(Utilities.JFI("touches", oplist, regions)+"\n");
 			} else {
-				System.out.println(Utilities.JFI_load(oplist, regions)+"\n");
+				System.out.println(Utilities.JFI("load", oplist, regions)+"\n");
 			}
 			
-			Map<Integer, List<Double>> realLoad = new TreeMap<Integer, List<Double>>();
+			Map<Integer, List<Double>> metricValuesPerRegion = new TreeMap<Integer, List<Double>>();
 			
 			ArrayList<Double> JFIs = new ArrayList<Double>(num_experiments);
 			
@@ -105,7 +109,7 @@ public class Main {
 				rnd = new Random(i);
 				
 				// Generates new update & search loads
-				Queue<Update> newUplist = Utilities.generateUpdateLoad(num_attr, num_update_new_samples, num_GUIDs, dist, rnd);
+				Queue<Update> newUplist = Utilities.generateUpdateLoad(num_attr, num_update_new_samples, num_max_guids, dist, rnd);
 				Queue<Search> newSlist  = Utilities.generateSearchLoad(num_attr, num_search_new_samples, dist, rnd);
 				
 				// Sort operations
@@ -113,56 +117,56 @@ public class Main {
 				
 				// Calculates JFI
 				if (touches) {
-					JFIs.add(Utilities.JFI_touches(newOplist, regions));
+					JFIs.add(Utilities.JFI("touches", newOplist, regions));
 				} else {
-					JFIs.add(Utilities.JFI_load(newOplist, regions));
+					JFIs.add(Utilities.JFI("load", newOplist, regions));
 				}
 				
 				for (Region r : regions) {
 					
 					int index = regions.indexOf(r)+1;
 					
-					double totalLoad = 0;
+					double metricValue = 0;
 					if (touches) {
-						totalLoad = r.getUpdateTouches()+r.getSearchTouches();
+						metricValue = r.getUpdateTouches()+r.getSearchTouches();
 					} else {
-						totalLoad = r.getUpdateLoad()+r.getSearchLoad();
+						metricValue = r.getUpdateLoad()+r.getSearchLoad();
 					}
 					
-					if (!realLoad.containsKey(index)) {
-						ArrayList<Double> load = new ArrayList<Double>(num_experiments);
-						load.add(totalLoad);
-						realLoad.put(index, load);
+					if (!metricValuesPerRegion.containsKey(index)) {
+						ArrayList<Double> metricValues = new ArrayList<Double>(num_experiments);
+						metricValues.add(metricValue);
+						metricValuesPerRegion.put(index, metricValues);
 					} else {
-						realLoad.get(index).add(totalLoad);
+						metricValuesPerRegion.get(index).add(metricValue);
 					}
 					
 				}
 				
 			}
 			
-			Map<Integer, Double> meanLoad = new TreeMap<Integer, Double>();
+			Map<Integer, Double> meansPerRegion = new TreeMap<Integer, Double>();
 	
-			for (Map.Entry<Integer, List<Double>> e : realLoad.entrySet()) {
+			for (Map.Entry<Integer, List<Double>> e : metricValuesPerRegion.entrySet()) {
 				
-				List<Double> load = e.getValue();
+				List<Double> metricValues = e.getValue();
 				
 				double sum = 0;
-				for (double l : load) {
-					sum += l;
+				for (double val : metricValues) {
+					sum += val;
 				}
 				
-				double avg = sum / load.size();
-				meanLoad.put(e.getKey(), avg);
+				double mean = sum / metricValues.size();
+				meansPerRegion.put(e.getKey(), mean);
 				
 			}
 			
-			Map<Integer, Double> CI = calculateConfidenceInterval(realLoad, meanLoad);
+			Map<Integer, Double> CI = calculateConfidenceInterval(metricValuesPerRegion, meansPerRegion);
 			
 			double sum = 0.0;
 			for (double d : JFIs)
 				sum += d;
-			double JFI_avg = sum/JFIs.size();
+			double JFI_mean = sum/JFIs.size();
 			
 			File output1 = new File(fileName);
 			FileWriter fw1 = null;
@@ -177,12 +181,12 @@ public class Main {
 				for (Map.Entry<Integer, Double> e : CI.entrySet()) {
 					
 					bw1.newLine();
-					bw1.write(e.getKey()+",\t"+meanLoad.get(e.getKey())+",\t"+e.getValue());
+					bw1.write(e.getKey()+",\t"+meansPerRegion.get(e.getKey())+",\t"+e.getValue());
 					
 				}
 				
 				bw1.newLine();
-				bw1.write("JFI:\t"+JFI_avg);				
+				bw1.write("JFI:\t"+JFI_mean);				
 				
 			} catch (IOException e) { e.printStackTrace(); }
 			
