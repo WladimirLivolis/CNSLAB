@@ -92,7 +92,7 @@ public class HeuristicV1 {
 					newRegions.add(newRegion2);	
 
 					// Calculates JFI index
-					double jfindex = Utilities.JFI_load(oplist, newRegions);
+					double jfindex = Utilities.JFI("load", oplist, newRegions);
 
 					// If JFIndex is the best so far, then we keep it
 					if (jfindex > bestJFI) {

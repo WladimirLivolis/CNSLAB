@@ -9,9 +9,23 @@ import java.util.TreeMap;
 
 public class Utilities {
 	
-	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. 
-	 * This JFI is based on search & update loads per region. */
-	public static double JFI_load(Queue<Operation> oplist, List<Region> rlist) {
+	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. *
+	 * This index can be either based upon load per region or touches per region.      */
+	public static double JFI(String metric, Queue<Operation> oplist, List<Region> rlist) {
+		
+		double JFI = -1;
+		
+		if (metric.toLowerCase().equals("touches")) {
+			JFI = JFI_touches(oplist, rlist);
+		} else if (metric.toLowerCase().equals("load")) {
+			JFI = JFI_load(oplist, rlist);			
+		}
+		
+		return JFI;
+		
+	}
+	
+	private static double JFI_load(Queue<Operation> oplist, List<Region> rlist) {
 		
 		double upload = 0, sload = 0, upsquare = 0, ssquare = 0;
 		
@@ -44,15 +58,11 @@ public class Utilities {
 		return JFI;
 	}
 	
-	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. 
-	 * This JFI is based on search & update touches per region. */
-	public static double JFI_touches(Queue<Operation> oplist, List<Region> rlist) {
+	private static double JFI_touches(Queue<Operation> oplist, List<Region> rlist) {
 		
 		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0;
-		
-		Map<Integer, Map<String, Double>> GUIDs = new TreeMap<Integer, Map<String, Double>>();
-		
-		checkTouchesPerRegion(rlist, GUIDs, oplist);
+				
+		checkTouchesPerRegion(rlist, oplist);
 		
 		for (Region r : rlist) {			
 			up_touches += r.getUpdateTouches();
@@ -321,9 +331,11 @@ public class Utilities {
 		return operations;
 	}
 	
-	public static void checkTouchesPerRegion(List<Region> regions, Map<Integer, Map<String, Double>> guids, Queue<Operation> oplist) {
+	public static void checkTouchesPerRegion(List<Region> regions, Queue<Operation> oplist) {
 		
 		clear_regions_touches(regions);
+		
+		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
 		
 		for (Operation op : oplist) {
 			
