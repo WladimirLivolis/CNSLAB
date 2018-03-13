@@ -147,6 +147,8 @@ public class HeuristicV2 {
 				if (guidsPerPoint.containsKey(up_attr_val)) {
 					int previous_count = guidsPerPoint.get(up_attr_val);
 					guidsPerPoint.put(up_attr_val, previous_count+1);
+				} else {
+					guidsPerPoint.put(up_attr_val, 1);
 				}
 
 			}
@@ -181,7 +183,7 @@ public class HeuristicV2 {
 			}
 
 		}
-
+		
 		return touchesPerPoint;
 
 	}
