@@ -4,10 +4,16 @@ import java.util.Map;
 
 public class Search implements Operation {
 	
+	private String id;
 	private Map<String, Range> pairs;
 	
-	public Search() {
+	public Search(String id) {
+		this.id = id;
 		pairs = new HashMap<String, Range>();
+	}
+	
+	public String getId() {
+		return id;
 	}
 	
 	public void setPair(String attrkey, Range range) {
