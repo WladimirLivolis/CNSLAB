@@ -1,11 +1,19 @@
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
 import java.util.TreeMap;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 public class Utilities {
 	
@@ -128,59 +136,232 @@ public class Utilities {
 		return val;
 	}
 	
-	public static Queue<Update> generateUpdateLoad(int AttrNum, int UpNum, int numGuids, String dist, Random rnd) {
-
-		Map<Integer, Map<String, Double>> GUIDs = new TreeMap<Integer, Map<String, Double>>();
-
-		Queue<Update> updates = new LinkedList<Update>();
-
-		for (int i = 0; i < UpNum; i++) {
-
-			int guid = rnd.nextInt(numGuids) + 1;
-
-			boolean flag = GUIDs.containsKey(guid);
-
-			Update up = new Update(guid);
-
-			Map<String, Double> pairAttributeValue = new HashMap<String, Double>(AttrNum);
-
-			for (int j = 1; j <= AttrNum; j++) {
-
-				// check whether there was a previous value for this attribute
-				if (flag) {
-					double previous_value = GUIDs.get(guid).get("A"+j);
-					up.setAttr("A"+j+"'", previous_value);
-				} else {
-					up.setAttr("A"+j+"'", -1);
-				}
-
-				// new value for this attribute
-				double v = nextVal(dist, rnd);
-				up.setAttr("A"+j, v);
-				pairAttributeValue.put("A"+j, v);
-
+	@SuppressWarnings("unchecked")
+	public static void generateOperations(int updateQty, int searchQty, int attrQty, int guidMaxQty, String distribution, String fileName, Random rnd) {
+		
+		// Creates a JSONArray for operations
+		JSONArray operations = new JSONArray();
+		
+		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
+		
+		int numSearches = 0, numUpdates = 0;
+				
+		while ( numSearches < searchQty || numUpdates < updateQty ) {
+			
+			// creates JSONObject that represents the new operation
+	        JSONObject newOperation = new JSONObject();
+				        
+			boolean update = rnd.nextBoolean() && numUpdates < updateQty;
+			
+			boolean search = !update && numSearches < searchQty;
+			
+			if (update) {
+				newOperation.put("Id", "U"+(++numUpdates));
+				generateUpdate(attrQty, guidMaxQty, distribution, guids, newOperation, rnd);
+				operations.add(newOperation);
+			} 
+			
+			if (search) {
+				newOperation.put("Id", "S"+(++numSearches));
+				generateSearch(attrQty, distribution, newOperation, rnd);
+				operations.add(newOperation);
 			}
-
-			updates.add(up);
-			GUIDs.put(guid, pairAttributeValue);			
-
+			
 		}
-
-		return updates;
+		
+		// Writes JSON to file
+        PrintWriter pw;
+		
+        try {
+			
+        	pw = new PrintWriter(fileName);
+			
+			pw.write(operations.toJSONString());
+			
+			pw.close();
+		
+        } catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}       
+		
 	}
 	
-	public static Queue<Search> generateSearchLoad(int AttrNum, int SNum, String dist, Random rnd) {
-		Queue<Search> searches = new LinkedList<Search>();
-		for (int i = 0; i < SNum; i++) {
-			Search s = new Search();
-			for (int j = 1; j <= AttrNum; j++) {
-				double v1 = nextVal(dist, rnd);
-				double v2 = nextVal(dist, rnd);
-				s.setPair("A"+j, new Range(v1, v2));
+	@SuppressWarnings("unchecked")
+	private static void generateUpdate(int attrQty, int guidMaxQty, String distribution, Map<Integer, Map<String, Double>> guids, JSONObject newOperation, Random rnd) {
+				
+		int guid = rnd.nextInt(guidMaxQty) + 1;
+
+		boolean flag = guids.containsKey(guid);
+
+		newOperation.put("GUID", guid);
+
+		// Creates a JSONArray for Attribute-Value Pairs
+		JSONArray updateAttrValPairs = new JSONArray();
+		
+		Map<String, Double> guidAttrValPairs = new HashMap<String, Double>(attrQty);
+
+		for (int i = 1; i <= attrQty; i++) {
+
+			Map<String, Object> pair = new LinkedHashMap<String, Object>(2);
+			pair.put("Attribute", "A"+i+"'");
+			
+			// check whether there was a previous value for this attribute
+			if (flag) {
+				double previous_value = guids.get(guid).get("A"+i);
+				pair.put("Value", previous_value);
+			} else {
+				pair.put("Value", -1d);
 			}
-			searches.add(s);
+			
+			updateAttrValPairs.add(pair);
+			
+			// new value for this attribute
+			double v = nextVal(distribution, rnd);
+			
+			pair = new LinkedHashMap<String, Object>(2);
+			
+			pair.put("Attribute", "A"+i);
+			pair.put("Value", v);
+			
+			updateAttrValPairs.add(pair);
+			
+			guidAttrValPairs.put("A"+i, v);
+
 		}
-		return searches;
+
+		newOperation.put("AttributeValuePairs", updateAttrValPairs);
+		
+		guids.put(guid, guidAttrValPairs);
+		
+	}
+	
+	@SuppressWarnings("unchecked")
+	private static void generateSearch(int attrQty, String distribution, JSONObject newOperation, Random rnd) {
+		
+		// Creates a JSONArray for Attribute-Range Pairs
+		JSONArray searchAttrRangePairs = new JSONArray();
+		
+		for (int i = 1; i <= attrQty; i++) {
+			
+			double v1 = nextVal(distribution, rnd);
+			double v2 = nextVal(distribution, rnd);
+			
+			if (v1 > v2) {
+				double temp = v1;
+				v1 = v2;
+				v2 = temp;
+			}
+			
+			Map<String, Double> rangeMap = new LinkedHashMap<String, Double>(2);
+			
+			rangeMap.put("Start", v1);
+			rangeMap.put("End", v2);
+
+			Map<String, Object> pair = new LinkedHashMap<String, Object>(2);
+
+			pair.put("Attribute", "A"+i);
+			pair.put("Range", rangeMap);
+			
+			searchAttrRangePairs.add(pair);
+
+		}
+		
+		newOperation.put("AttributeRangePairs", searchAttrRangePairs);
+
+	}
+	
+	public static Queue<Operation> readOperationsFile(String fileName) {
+		
+		Queue<Operation> operations = new LinkedList<Operation>();
+		
+        try {
+			
+        	// Parses the JSON file
+        	Object obj = new JSONParser().parse(new FileReader(fileName));
+        	
+        	// Gets array of operations
+        	JSONArray operationsJsonArray = (JSONArray) obj;
+        	
+        	for (Object op : operationsJsonArray) { // iterates over operations
+        		
+        		// Gets operation
+        		JSONObject operation = (JSONObject) op;
+        		
+        		// Operation Id
+        		String id = (String) operation.get("Id");
+
+        		// Checks whether this operation is a search or an update
+        		if (id.charAt(0) == 'U') { // Update
+        			
+        			// GUID
+        			long guid = (long) operation.get("GUID");
+        			
+        			// Creates new update
+        			Update up = new Update(id, (int)guid);
+        			
+        			// Attribute-Value Pairs
+        			JSONArray attrValPairs = (JSONArray) operation.get("AttributeValuePairs");
+        			
+        			for (Object pair : attrValPairs) { // iterates over attribute-value pairs
+        				
+        				// Gets a attribute-value pair
+        				JSONObject attrValPair = (JSONObject) pair;
+        				
+        				// Attribute
+        				String attr = (String) attrValPair.get("Attribute");
+        				
+        				// Value
+        				double val = (double) attrValPair.get("Value");
+        				
+        				up.setAttr(attr, val);
+        				
+        			}
+        			
+        			operations.add(up);
+        			
+        		}
+        		
+        		if (id.charAt(0) == 'S') { // Search
+        			
+        			// Creates new search
+        			Search s = new Search(id);
+        			
+        			// Attribute-Range Pairs
+        			JSONArray attrValRange = (JSONArray) operation.get("AttributeRangePairs");
+        			
+        			for (Object pair : attrValRange) { // iterates over attribute-range pairs
+        			
+        				// Gets a attribute-range pair
+        				JSONObject attrRangePair = (JSONObject) pair;
+        				
+        				// Attribute
+        				String attr = (String) attrRangePair.get("Attribute");
+        				
+        				// Range
+        				JSONObject range = (JSONObject) attrRangePair.get("Range");
+        				
+        				// Range Start
+        				double start = (double) range.get("Start");
+
+        				// Range End
+        				double end = (double) range.get("End");
+        				
+        				s.setPair(attr, new Range(start, end));
+        				
+        			}
+        			
+        			operations.add(s);
+        			
+        		}
+        		
+        	}
+			
+        } catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return operations;
+		
 	}
 	
 	public static void checkLoadPerRegion(List<Region> regions, Queue<Operation> oplist) {
@@ -304,31 +485,6 @@ public class Utilities {
 
 		}
 
-	}
-	
-	public static Queue<Operation> sortOperations(Queue<Search> slist, Queue<Update> uplist, Random rnd) {
-		
-		Queue<Operation> operations = new LinkedList<Operation>();
-		
-		while (!slist.isEmpty() || !uplist.isEmpty()) {
-
-			boolean flag = rnd.nextBoolean();
-
-			Operation op = null;
-
-			if (flag) {
-				op = uplist.poll();
-			} else {
-				op = slist.poll();
-			}
-			
-			if (op != null) {
-				operations.add(op);
-			}
-
-		}
-		
-		return operations;
 	}
 	
 	public static void checkTouchesPerRegion(List<Region> regions, Queue<Operation> oplist) {
