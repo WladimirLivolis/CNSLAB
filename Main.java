@@ -62,8 +62,6 @@ public class Main {
 	
 	public static void main(String[] args) {
 		
-		Random rnd = new Random();
-		
 		int num_attr = 3;
 		int num_mach = 64;
 		int num_max_guids = 500;
@@ -78,12 +76,11 @@ public class Main {
 		boolean touches = true;
 		
 		// Generates update & search loads for training
-		Utilities.generateOperations(num_update_training_samples, num_search_training_samples, num_attr, num_max_guids, dist, "training.json", rnd);
+		Utilities.generateOperations(num_update_training_samples, num_search_training_samples, num_attr, num_max_guids, dist, "training.json", new Random());
 		
 		// Generates update & search loads for our experiments
 		for (int i = 1; i <= num_experiments; i++) {
-			rnd = new Random(i);
-			Utilities.generateOperations(num_update_new_samples, num_search_new_samples, num_attr, num_max_guids, dist, "./experiment_load/experiment"+i+".json", rnd);
+			Utilities.generateOperations(num_update_new_samples, num_search_new_samples, num_attr, num_max_guids, dist, "./experiment_load/experiment"+i+".json", new Random());
 		}
 				
 		Map<String, Range> pairs = new HashMap<String, Range>(); // pairs attribute-range
@@ -104,7 +101,7 @@ public class Main {
 		Queue<Operation> oplist = Utilities.readOperationsFile("training.json");
 		
 		for (int h = 1; h <= 3; h++) {
-						
+			
 			String fileName;
 			
 			if (h==1) {

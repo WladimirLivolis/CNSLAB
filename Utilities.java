@@ -396,7 +396,7 @@ public class Utilities {
 					double r_start = r.getPairs().get(up_attr).getLow();  // region range start
 					double r_end   = r.getPairs().get(up_attr).getHigh(); // region range end
 
-					if (up_val < r_start || up_val > r_end) { // check whether update value is inside this region range
+					if (up_val < r_start || up_val >= r_end) { // check whether update value is inside this region range
 						flag_attr = false;
 						break;
 					}
@@ -439,7 +439,7 @@ public class Utilities {
 
 					if (s_start > s_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
 
-						if (s_start > r_end && s_end < r_start) {
+						if (s_start >= r_end && s_end < r_start) {
 
 							flag = false;
 							break;
@@ -449,17 +449,21 @@ public class Utilities {
 						if (r_end > s_start) {
 							double start = s_start, end = r_end;
 							if (r_start > s_start) { start = r_start; }
-							weight += (end-start)/interval_size;
+							weight += (end-start)/interval_size; // half-open interval: [s_start, r_end) OR [r_start, r_end)
 						}
-						if (r_start < s_end) {
+						if (r_start <= s_end) {
 							double start = r_start, end = s_end;
-							if (r_end < s_end) { end = r_end; }
-							weight += (end-start)/interval_size;
+							if (r_end <= s_end) { 
+								end = r_end;
+								weight += (end-start)/interval_size; // half-open interval: [r_start, r_end)
+							} else {
+								weight += ( (end-start)/interval_size ) + 1; // closed interval: [r_start, s_end]
+							}
 						}
 
 					} else {
 
-						if (s_start > r_end || s_end < r_start) { // check whether both region & search ranges overlap
+						if (s_start >= r_end || s_end < r_start) { // check whether both region & search ranges overlap
 
 							flag = false;
 							break;
@@ -468,8 +472,12 @@ public class Utilities {
 
 						double start = s_start, end = s_end;
 						if (r_start > s_start) { start = r_start; }
-						if (r_end < s_end) { end = r_end; }
-						weight += (end-start)/interval_size;
+						if (r_end < s_end) { 
+							end = r_end;
+							weight += (end-start)/interval_size; // half-open interval: [s_start, r_end) OR [r_start, r_end)
+						} else {
+							weight += ( (end-start)/interval_size ) + 1; // closed interval: [s_start, s_end] OR [r_start, s_end]
+						}
 
 					}
 
@@ -528,7 +536,7 @@ public class Utilities {
 					double regionRangeStart = region.getPairs().get(guidAttrKey).getLow(); 
 					double regionRangeEnd   = region.getPairs().get(guidAttrKey).getHigh(); 
 
-					if (guidAttrVal < regionRangeStart || guidAttrVal > regionRangeEnd) { // checks whether guid is in this region
+					if (guidAttrVal < regionRangeStart || guidAttrVal >= regionRangeEnd) { // checks whether guid is in this region
 						previouslyInRegion = false;
 						break;
 					}
@@ -571,7 +579,7 @@ public class Utilities {
 					double regionRangeStart = region.getPairs().get(updateAttrKey).getLow(); 
 					double regionRangeEnd = region.getPairs().get(updateAttrKey).getHigh();
 
-					if (updateAttrVal < regionRangeStart || updateAttrVal > regionRangeEnd) { // checks whether guid is coming to this region (or if it is staying in this region)
+					if (updateAttrVal < regionRangeStart || updateAttrVal >= regionRangeEnd) { // checks whether guid is coming to this region (or if it is staying in this region)
 						comingToRegion = false;
 						break;
 					}
@@ -581,9 +589,10 @@ public class Utilities {
 			// If so ...
 			if (comingToRegion) {
 
-				// updates its attributes with info from this update operation
+				// updates this GUID's attributes with info from this update operation
 				Map<String, Double> guid_attr = new HashMap<String, Double>();
 				for (Map.Entry<String, Double> up_attr : up.getAttributes().entrySet()) {
+					if (up_attr.getKey().contains("'")) { continue; } // ignore attributes ending with ', for it's old info
 					guid_attr.put(up_attr.getKey(), up_attr.getValue());
 				}
 				guids.put(guid, guid_attr);
@@ -623,9 +632,9 @@ public class Utilities {
 					double regionRangeEnd   = region.getPairs().get(searchAttrKey).getHigh();
 
 					if (searchRangeStart > searchRangeEnd) {
-						if (searchRangeStart > regionRangeEnd && searchRangeEnd < regionRangeStart) { isInRegion = false; break; }
+						if (searchRangeStart >= regionRangeEnd && searchRangeEnd < regionRangeStart) { isInRegion = false; break; }
 					} else {
-						if (searchRangeStart > regionRangeEnd || searchRangeEnd < regionRangeStart) { isInRegion = false; break; }
+						if (searchRangeStart >= regionRangeEnd || searchRangeEnd < regionRangeStart) { isInRegion = false; break; }
 					}
 				}
 			}

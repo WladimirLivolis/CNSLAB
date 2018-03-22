@@ -49,7 +49,7 @@ public class HeuristicV2 {
 				
 				if (search_low_range > search_high_range) {
 					
-					for (double point = search_low_range; point <= 1; point += granularity) {
+					for (double point = search_low_range; point < 1; point += granularity) {
 						
 						point = Math.round(point * 100) / 100d;
 						
@@ -204,7 +204,7 @@ public class HeuristicV2 {
 		
 		int total = 0;
 		
-		// calculates the total number of touches / total load
+		// calculates either total number of touches or total load
 		for (int val : metricPerPoint.values()) { total += val; }
 		
 		Queue<Double> quantiles = new LinkedList<Double>();
@@ -236,13 +236,13 @@ public class HeuristicV2 {
 				break;
 			}
 		
-			count += metricPerPoint.get(d);  // 'count' represents the accumulated amount of touches / load until point 'd'
+			count += metricPerPoint.get(d);  // 'count' represents either accumulated amount of touches or load until point 'd'
 			
 			double percentage = count/(double)total;
 			
 			double quantile = quantiles.peek();
 
-			if (percentage >= quantile ) { // if the touches / load percentage until 'd' is greater than or equal to 'quantile', 'd' is that 'quantile'
+			if (percentage >= quantile ) { // if either touches or load percentage until 'd' is greater than or equal to 'quantile', 'd' is that 'quantile'
 				
 				quantiles.poll();
 				
