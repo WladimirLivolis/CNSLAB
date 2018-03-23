@@ -128,7 +128,12 @@ public class HeuristicV2 {
 
 					if (guidsPerPoint.containsKey(guid_attr_val)) {
 						int previous_count = guidsPerPoint.get(guid_attr_val);
-						guidsPerPoint.put(guid_attr_val, previous_count-1);
+						int new_count = previous_count-1;
+						if (new_count == 0) {
+							guidsPerPoint.remove(guid_attr_val);
+						} else {
+							guidsPerPoint.put(guid_attr_val, new_count);
+						}
 					}
 
 				}
@@ -163,19 +168,39 @@ public class HeuristicV2 {
 
 					double search_low_range  = s.getPairs().get(axis).getLow();
 					double search_high_range = s.getPairs().get(axis).getHigh();
+					
+					// here we'll check whether this point is in this search's range
+					// if so, the number of guids on this point is the number of touches on this point
+					if (search_low_range > search_high_range) {
+						
+						if (point >= search_low_range || point <= search_high_range) {
+							
+							int touchesOnThisPoint = e.getValue();
+	
+							if (touchesPerPoint.containsKey(point)) {
+								int previous_count = touchesPerPoint.get(point);
+								touchesPerPoint.put(point, previous_count+touchesOnThisPoint);
+							} else {
+								touchesPerPoint.put(point, touchesOnThisPoint);
+							}
+	
+						}						
+						
+					} else {
 
-					if (point >= search_low_range && point <= search_high_range) { // check whether this point is in this search's range
-
-						int touchesOnThisPoint = e.getValue();
-
-						// if so, the number of guids on this point is the number of touches on this point
-						if (touchesPerPoint.containsKey(point)) {
-							int previous_count = touchesPerPoint.get(point);
-							touchesPerPoint.put(point, previous_count+touchesOnThisPoint);
-						} else {
-							touchesPerPoint.put(point, touchesOnThisPoint);
+						if (point >= search_low_range && point <= search_high_range) {
+	
+							int touchesOnThisPoint = e.getValue();
+	
+							if (touchesPerPoint.containsKey(point)) {
+								int previous_count = touchesPerPoint.get(point);
+								touchesPerPoint.put(point, previous_count+touchesOnThisPoint);
+							} else {
+								touchesPerPoint.put(point, touchesOnThisPoint);
+							}
+	
 						}
-
+						
 					}
 
 				}				

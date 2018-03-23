@@ -246,12 +246,6 @@ public class Utilities {
 			double v1 = nextVal(distribution, rnd);
 			double v2 = nextVal(distribution, rnd);
 			
-			if (v1 > v2) {
-				double temp = v1;
-				v1 = v2;
-				v2 = temp;
-			}
-			
 			Map<String, Double> rangeMap = new LinkedHashMap<String, Double>(2);
 			
 			rangeMap.put("Start", v1);
@@ -437,7 +431,7 @@ public class Utilities {
 					double r_start = r.getPairs().get(s_attr).getLow();  // region range start
 					double r_end   = r.getPairs().get(s_attr).getHigh(); // region range end 
 
-					if (s_start > s_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
+					if (s_start > s_end) { // to make the search's range uniform --> start > end: [start,1.0] ^ [0.0,end]
 
 						if (s_start >= r_end && s_end < r_start) {
 
@@ -592,7 +586,7 @@ public class Utilities {
 				// updates this GUID's attributes with info from this update operation
 				Map<String, Double> guid_attr = new HashMap<String, Double>();
 				for (Map.Entry<String, Double> up_attr : up.getAttributes().entrySet()) {
-					if (up_attr.getKey().contains("'")) { continue; } // ignore attributes ending with ', for it's old info
+					if (up_attr.getKey().contains("'")) { continue; } // ignore attributes ending with ', as it's old info
 					guid_attr.put(up_attr.getKey(), up_attr.getValue());
 				}
 				guids.put(guid, guid_attr);
