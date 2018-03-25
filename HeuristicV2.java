@@ -168,39 +168,28 @@ public class HeuristicV2 {
 
 					double search_low_range  = s.getPairs().get(axis).getLow();
 					double search_high_range = s.getPairs().get(axis).getHigh();
+										
+					boolean condition;
+					
+					if (search_low_range > search_high_range) {
+						condition = (point >= search_low_range || point <= search_high_range);				
+					} else {
+						condition = (point >= search_low_range && point <= search_high_range);
+					}
 					
 					// here we'll check whether this point is in this search's range
-					// if so, the number of guids on this point is the number of touches on this point
-					if (search_low_range > search_high_range) {
+					if (condition) {
 						
-						if (point >= search_low_range || point <= search_high_range) {
-							
-							int touchesOnThisPoint = e.getValue();
-	
-							if (touchesPerPoint.containsKey(point)) {
-								int previous_count = touchesPerPoint.get(point);
-								touchesPerPoint.put(point, previous_count+touchesOnThisPoint);
-							} else {
-								touchesPerPoint.put(point, touchesOnThisPoint);
-							}
-	
-						}						
-						
-					} else {
+						// if so, the number of guids on this point is the number of touches on this point
+						int touchesOnThisPoint = e.getValue();
 
-						if (point >= search_low_range && point <= search_high_range) {
-	
-							int touchesOnThisPoint = e.getValue();
-	
-							if (touchesPerPoint.containsKey(point)) {
-								int previous_count = touchesPerPoint.get(point);
-								touchesPerPoint.put(point, previous_count+touchesOnThisPoint);
-							} else {
-								touchesPerPoint.put(point, touchesOnThisPoint);
-							}
-	
+						if (touchesPerPoint.containsKey(point)) {
+							int previous_count = touchesPerPoint.get(point);
+							touchesPerPoint.put(point, previous_count+touchesOnThisPoint);
+						} else {
+							touchesPerPoint.put(point, touchesOnThisPoint);
 						}
-						
+
 					}
 
 				}				
