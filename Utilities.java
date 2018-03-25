@@ -1,14 +1,39 @@
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
+import java.util.TreeMap;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 public class Utilities {
 	
-	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. 
-	 * This JFI is based on search & update loads per region. */
-	public static double JFI(Queue<Operation> oplist, List<Region> rlist) {
+	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. *
+	 * This index can be either based upon load per region or touches per region.      */
+	public static double JFI(String metric, Queue<Operation> oplist, List<Region> rlist) {
+		
+		double JFI = -1;
+		
+		if (metric.toLowerCase().equals("touches")) {
+			JFI = JFI_touches(oplist, rlist);
+		} else if (metric.toLowerCase().equals("load")) {
+			JFI = JFI_load(oplist, rlist);			
+		}
+		
+		return JFI;
+		
+	}
+	
+	private static double JFI_load(Queue<Operation> oplist, List<Region> rlist) {
 		
 		double upload = 0, sload = 0, upsquare = 0, ssquare = 0;
 		
@@ -41,13 +66,11 @@ public class Utilities {
 		return JFI;
 	}
 	
-	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. 
-	 * This JFI is based on search & update touches per region. */
-	public static double JFI(Queue<Operation> oplist, List<GUID> GUIDs, List<Region> rlist) {
+	private static double JFI_touches(Queue<Operation> oplist, List<Region> rlist) {
 		
 		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0;
-		
-		checkTouchesPerRegion(rlist, GUIDs, oplist);
+				
+		checkTouchesPerRegion(rlist, oplist);
 		
 		for (Region r : rlist) {			
 			up_touches += r.getUpdateTouches();
@@ -76,71 +99,6 @@ public class Utilities {
 		return JFI;
 	}
 	
-	public static List<GUID> generateGUIDs(int qty, int AttrNum, Random rnd) {
-		List<GUID> GUIDs = new ArrayList<GUID>(qty);
-		for (int i = 0; i < qty; i++) {
-			GUID guid = new GUID("GUID"+i);
-			for (int j = 1; j <= AttrNum; j++) {
-				double v = rnd.nextDouble();
-				guid.set_attribute("A"+j, v);
-			}
-			GUIDs.add(guid);
-		}
-		return GUIDs;
-	}
-	
-	public static List<GUID> copyGUIDs(List<GUID> GUIDs) {
-		List<GUID> newGUIDs = new ArrayList<GUID>(GUIDs.size());
-		for (GUID guid : GUIDs) {
-			GUID copy = new GUID(guid.getName());
-			for (Attribute a : guid.getAttributes()) {
-				copy.set_attribute(a.getKey(), a.getValue());
-			}
-			newGUIDs.add(copy);
-		}
-		return newGUIDs;
-	}
-	
-	public static Queue<Operation> copyOplist(Queue<Operation> oplist, List<GUID> copyOfGUIDs) {
-		Queue<Operation> newOplist = new LinkedList<Operation>();
-		for (Operation op : oplist) {
-			
-			if (op instanceof Update) {
-				
-				Update up = (Update)op;
-				Update copy = null;
-				
-				for (GUID guid : copyOfGUIDs) {
-					if (guid.getName().equals(up.getGuid().getName())) {
-						copy = new Update(guid);
-					}
-				}
-				
-				newOplist.add(copy);				
-				
-			}
-			
-			if (op instanceof Search) {
-				
-				Search s = (Search)op;
-				Search copy = new Search();
-				
-				for (PairAttributeRange pair : s.getPairs()) {
-					
-					copy.addPair(pair.getAttrkey(), new Range(pair.getRange().getLow(), pair.getRange().getHigh()));
-					
-				}
-				
-				newOplist.add(copy);
-				
-			}
-			
-		}
-		
-		return newOplist;
-		
-	}
-	
 	public static List<Region> copyRegions(List<Region> regions) {
 		List<Region> copy = new ArrayList<Region>(regions.size());
 		for (Region r : regions)
@@ -148,32 +106,256 @@ public class Utilities {
 		return copy;
 	}
 	
-	public static Queue<Update> generateUpdateLoad(int AttrNum, int UpNum, List<GUID> GUIDs, Random rnd) {
-		Queue<Update> updates = new LinkedList<Update>();
-		for (int i = 0; i < UpNum; i++) {
-			GUID guid = GUIDs.get(rnd.nextInt(GUIDs.size())); // pick one of the GUIDs already created
-			Update up = new Update(guid);
-			for (int j = 1; j <= AttrNum; j++) {
-				double v = rnd.nextDouble();
-				up.addAttr("A"+j, v);
-			}
-			updates.add(up);
-		}
-		return updates;
+	private static double nextExponential(double lambda, Random rnd) {
+		double val;
+		do {
+			val = Math.log(1-rnd.nextDouble())/(-lambda);
+		} while (val > 1);
+		return val;
 	}
 	
-	public static Queue<Search> generateSearchLoad(int AttrNum, int SNum, Random rnd) {
-		Queue<Search> searches = new LinkedList<Search>();
-		for (int i = 0; i < SNum; i++) {
-			Search s = new Search();
-			for (int j = 1; j <= AttrNum; j++) {
-				double v1 = rnd.nextDouble();
-				double v2 = rnd.nextDouble();
-				s.addPair("A"+j, new Range(v1, v2));
-			}
-			searches.add(s);
+	private static double nextGaussian(double deviation, double mean, Random rnd) {
+		return rnd.nextGaussian()*deviation+mean;
+	}
+	
+	private static double nextVal(String dist, Random rnd) {
+		double val;
+		switch(dist.toLowerCase()) {	
+			case "normal":
+			case "gaussian":
+				val = nextGaussian(0.15, 0.5, rnd);
+				break;
+			case "exponential":
+				val = nextExponential(1, rnd);
+				break;
+			case "uniform":
+			default:
+				val = rnd.nextDouble();
+				break;
 		}
-		return searches;
+		return val;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static void generateOperations(int updateQty, int searchQty, int attrQty, int guidMaxQty, String distribution, String fileName, Random rnd) {
+		
+		// Creates a JSONArray for operations
+		JSONArray operations = new JSONArray();
+		
+		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
+		
+		int numSearches = 0, numUpdates = 0;
+				
+		while ( numSearches < searchQty || numUpdates < updateQty ) {
+			
+			// creates JSONObject that represents the new operation
+	        JSONObject newOperation = new JSONObject();
+				        
+			boolean update = rnd.nextBoolean() && numUpdates < updateQty;
+			
+			boolean search = !update && numSearches < searchQty;
+			
+			if (update) {
+				newOperation.put("Id", "U"+(++numUpdates));
+				generateUpdate(attrQty, guidMaxQty, distribution, guids, newOperation, rnd);
+				operations.add(newOperation);
+			} 
+			
+			if (search) {
+				newOperation.put("Id", "S"+(++numSearches));
+				generateSearch(attrQty, distribution, newOperation, rnd);
+				operations.add(newOperation);
+			}
+			
+		}
+		
+		// Writes JSON to file
+        PrintWriter pw;
+		
+        try {
+			
+        	pw = new PrintWriter(fileName);
+			
+			pw.write(operations.toJSONString());
+			
+			pw.close();
+		
+        } catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}       
+		
+	}
+	
+	@SuppressWarnings("unchecked")
+	private static void generateUpdate(int attrQty, int guidMaxQty, String distribution, Map<Integer, Map<String, Double>> guids, JSONObject newOperation, Random rnd) {
+				
+		int guid = rnd.nextInt(guidMaxQty) + 1;
+
+		boolean flag = guids.containsKey(guid);
+
+		newOperation.put("GUID", guid);
+
+		// Creates a JSONArray for Attribute-Value Pairs
+		JSONArray updateAttrValPairs = new JSONArray();
+		
+		Map<String, Double> guidAttrValPairs = new HashMap<String, Double>(attrQty);
+
+		for (int i = 1; i <= attrQty; i++) {
+
+			Map<String, Object> pair = new LinkedHashMap<String, Object>(2);
+			pair.put("Attribute", "A"+i+"'");
+			
+			// check whether there was a previous value for this attribute
+			if (flag) {
+				double previous_value = guids.get(guid).get("A"+i);
+				pair.put("Value", previous_value);
+			} else {
+				pair.put("Value", -1d);
+			}
+			
+			updateAttrValPairs.add(pair);
+			
+			// new value for this attribute
+			double v = nextVal(distribution, rnd);
+			
+			pair = new LinkedHashMap<String, Object>(2);
+			
+			pair.put("Attribute", "A"+i);
+			pair.put("Value", v);
+			
+			updateAttrValPairs.add(pair);
+			
+			guidAttrValPairs.put("A"+i, v);
+
+		}
+
+		newOperation.put("AttributeValuePairs", updateAttrValPairs);
+		
+		guids.put(guid, guidAttrValPairs);
+		
+	}
+	
+	@SuppressWarnings("unchecked")
+	private static void generateSearch(int attrQty, String distribution, JSONObject newOperation, Random rnd) {
+		
+		// Creates a JSONArray for Attribute-Range Pairs
+		JSONArray searchAttrRangePairs = new JSONArray();
+		
+		for (int i = 1; i <= attrQty; i++) {
+			
+			double v1 = nextVal(distribution, rnd);
+			double v2 = nextVal(distribution, rnd);
+			
+			Map<String, Double> rangeMap = new LinkedHashMap<String, Double>(2);
+			
+			rangeMap.put("Start", v1);
+			rangeMap.put("End", v2);
+
+			Map<String, Object> pair = new LinkedHashMap<String, Object>(2);
+
+			pair.put("Attribute", "A"+i);
+			pair.put("Range", rangeMap);
+			
+			searchAttrRangePairs.add(pair);
+
+		}
+		
+		newOperation.put("AttributeRangePairs", searchAttrRangePairs);
+
+	}
+	
+	public static Queue<Operation> readOperationsFile(String fileName) {
+		
+		Queue<Operation> operations = new LinkedList<Operation>();
+		
+        try {
+			
+        	// Parses the JSON file
+        	Object obj = new JSONParser().parse(new FileReader(fileName));
+        	
+        	// Gets array of operations
+        	JSONArray operationsJsonArray = (JSONArray) obj;
+        	
+        	for (Object op : operationsJsonArray) { // iterates over operations
+        		
+        		// Gets operation
+        		JSONObject operation = (JSONObject) op;
+        		
+        		// Operation Id
+        		String id = (String) operation.get("Id");
+
+        		// Checks whether this operation is a search or an update
+        		if (id.charAt(0) == 'U') { // Update
+        			
+        			// GUID
+        			long guid = (long) operation.get("GUID");
+        			
+        			// Creates new update
+        			Update up = new Update(id, (int)guid);
+        			
+        			// Attribute-Value Pairs
+        			JSONArray attrValPairs = (JSONArray) operation.get("AttributeValuePairs");
+        			
+        			for (Object pair : attrValPairs) { // iterates over attribute-value pairs
+        				
+        				// Gets a attribute-value pair
+        				JSONObject attrValPair = (JSONObject) pair;
+        				
+        				// Attribute
+        				String attr = (String) attrValPair.get("Attribute");
+        				
+        				// Value
+        				double val = (double) attrValPair.get("Value");
+        				
+        				up.setAttr(attr, val);
+        				
+        			}
+        			
+        			operations.add(up);
+        			
+        		}
+        		
+        		if (id.charAt(0) == 'S') { // Search
+        			
+        			// Creates new search
+        			Search s = new Search(id);
+        			
+        			// Attribute-Range Pairs
+        			JSONArray attrValRange = (JSONArray) operation.get("AttributeRangePairs");
+        			
+        			for (Object pair : attrValRange) { // iterates over attribute-range pairs
+        			
+        				// Gets a attribute-range pair
+        				JSONObject attrRangePair = (JSONObject) pair;
+        				
+        				// Attribute
+        				String attr = (String) attrRangePair.get("Attribute");
+        				
+        				// Range
+        				JSONObject range = (JSONObject) attrRangePair.get("Range");
+        				
+        				// Range Start
+        				double start = (double) range.get("Start");
+
+        				// Range End
+        				double end = (double) range.get("End");
+        				
+        				s.setPair(attr, new Range(start, end));
+        				
+        			}
+        			
+        			operations.add(s);
+        			
+        		}
+        		
+        	}
+			
+        } catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return operations;
+		
 	}
 	
 	public static void checkLoadPerRegion(List<Region> regions, Queue<Operation> oplist) {
@@ -194,65 +376,33 @@ public class Utilities {
 
 		for (Region r : regions) { // iterate over regions
 
-			// I) Checks whether this update is in this region regarding its attribute
+			// Checks whether this update is in this region regarding its attribute
 
 			boolean flag_attr = true;
 
-			for (Attribute attr : up.getAttributes()) { // iterate over this update attributes
+			for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
 
 				String up_attr = attr.getKey();   // update attribute
 				double up_val  = attr.getValue(); // update value
+				
+				if (r.getPairs().containsKey(up_attr)) { // check the region's range for this attribute
 
-				for (PairAttributeRange pair : r.getPairs()) { // iterate over this region pairs
+					double r_start = r.getPairs().get(up_attr).getLow();  // region range start
+					double r_end   = r.getPairs().get(up_attr).getHigh(); // region range end
 
-					String r_attr  = pair.getAttrkey();         // region attribute
-					double r_start = pair.getRange().getLow();  // region range start
-					double r_end   = pair.getRange().getHigh(); // region range end
-
-					if (up_attr.equals(r_attr)) { // if we are dealing with same attribute
-
-						if (up_val < r_start || up_val > r_end) { // check whether update value is inside this region range
-							flag_attr = false;
-						}
-
+					if (up_val < r_start || up_val >= r_end) { // check whether update value is inside this region range
+						flag_attr = false;
+						break;
 					}
 
 				}
 
 			}
 
-			// II) Now checks whether this update is in this region regarding its guid
-
-//			boolean flag_guid = true;
-//
-//			GUID guid = up.getGuid();
-//
-//			for (Attribute attr : guid.getAttributes()) { // iterate over this guid attributes
-//
-//				String guid_attr = attr.getKey();   // guid attribute
-//				double guid_val  = attr.getValue(); // guid value
-//
-//				for (PairAttributeRange pair : r.getPairs()) { // iterate over this region pairs
-//
-//					String r_attr  = pair.getAttrkey();         // region attribute
-//					double r_start = pair.getRange().getLow();  // region range start
-//					double r_end   = pair.getRange().getHigh(); // region range end
-//
-//					if (guid_attr.equals(r_attr)) { // if we are dealing with same attribute
-//
-//						if (guid_val < r_start || guid_val > r_end) { // check whether guid value is inside this region range
-//							flag_guid = false;
-//						}
-//
-//					}
-//
-//				}
-//
-//			}
-
 			if (flag_attr) {
 
 				r.insertUpdateLoad(up, 1);
+				break;
 
 			}
 
@@ -270,52 +420,57 @@ public class Utilities {
 			
 			double weight = 0;
 
-			for (PairAttributeRange s_pair : s.getPairs()) { // iterate over this search pairs
+			for (Map.Entry<String, Range> s_pair : s.getPairs().entrySet()) { // iterate over this search pairs
 
-				String s_attr  = s_pair.getAttrkey();         // search attribute
-				double s_start = s_pair.getRange().getLow();  // search range start
-				double s_end   = s_pair.getRange().getHigh(); // search range end
+				String s_attr  = s_pair.getKey();             // search attribute
+				double s_start = s_pair.getValue().getLow();  // search range start
+				double s_end   = s_pair.getValue().getHigh(); // search range end
+				
+				if (r.getPairs().containsKey(s_attr)) { // check the region's range for this attribute 
 
-				for (PairAttributeRange r_pair : r.getPairs()) { // iterate over this region pairs
+					double r_start = r.getPairs().get(s_attr).getLow();  // region range start
+					double r_end   = r.getPairs().get(s_attr).getHigh(); // region range end 
 
-					String r_attr  = r_pair.getAttrkey();         // region attribute
-					double r_start = r_pair.getRange().getLow();  // region range start
-					double r_end   = r_pair.getRange().getHigh(); // region range end 
+					if (s_start > s_end) { // to make the search's range uniform --> start > end: [start,1.0] ^ [0.0,end]
 
-					if (s_attr.equals(r_attr)) { // check whether we are dealing with same atribute
+						if (s_start >= r_end && s_end < r_start) {
 
-						if (s_start > s_end) { // trata o caso de buscas uniformes (circular) --> start > end: [start,1.0] ^ [0.0,end]
+							flag = false;
+							break;
 
-							if (s_start > r_end && s_end < r_start) {
+						}
 
-								flag = false;
-
-							}
-							
-							if (r_end > s_start) {
-								double start = s_start, end = r_end;
-								if (r_start > s_start) { start = r_start; }
-								weight += (end-start)/interval_size;
-							}
-							if (r_start < s_end) {
-								double start = r_start, end = s_end;
-								if (r_end < s_end) { end = r_end; }
-								weight += (end-start)/interval_size;
-							}
-
-						} else {
-
-							if (s_start > r_end || s_end < r_start) { // check whether both region & search ranges overlap
-
-								flag = false;
-
-							}
-							
-							double start = s_start, end = s_end;
+						if (r_end > s_start) {
+							double start = s_start, end = r_end;
 							if (r_start > s_start) { start = r_start; }
-							if (r_end < s_end) { end = r_end; }
-							weight += (end-start)/interval_size;
+							weight += (end-start)/interval_size; // half-open interval: [s_start, r_end) OR [r_start, r_end)
+						}
+						if (r_start <= s_end) {
+							double start = r_start, end = s_end;
+							if (r_end <= s_end) { 
+								end = r_end;
+								weight += (end-start)/interval_size; // half-open interval: [r_start, r_end)
+							} else {
+								weight += ( (end-start)/interval_size ) + 1; // closed interval: [r_start, s_end]
+							}
+						}
 
+					} else {
+
+						if (s_start >= r_end || s_end < r_start) { // check whether both region & search ranges overlap
+
+							flag = false;
+							break;
+
+						}
+
+						double start = s_start, end = s_end;
+						if (r_start > s_start) { start = r_start; }
+						if (r_end < s_end) { 
+							end = r_end;
+							weight += (end-start)/interval_size; // half-open interval: [s_start, r_end) OR [r_start, r_end)
+						} else {
+							weight += ( (end-start)/interval_size ) + 1; // closed interval: [s_start, s_end] OR [r_start, s_end]
 						}
 
 					}
@@ -334,50 +489,25 @@ public class Utilities {
 
 	}
 	
-	public static Queue<Operation> sortOperations(Queue<Search> slist, Queue<Update> uplist, Random rnd) {
-		
-		Queue<Operation> operations = new LinkedList<Operation>();
-		
-		while (!slist.isEmpty() || !uplist.isEmpty()) {
-
-			boolean flag = rnd.nextBoolean();
-
-			Operation op = null;
-
-			if (flag) {
-				op = uplist.poll();
-			} else {
-				op = slist.poll();
-			}
-			
-			if (op != null) {
-				operations.add(op);
-			}
-
-		}
-		
-		return operations;
-	}
-	
-	public static void checkTouchesPerRegion(List<Region> regions, List<GUID> guids, Queue<Operation> oplist) {
+	public static void checkTouchesPerRegion(List<Region> regions, Queue<Operation> oplist) {
 		
 		clear_regions_touches(regions);
 		
-		distributeGUIDsAmongRegions(regions, guids);
+		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
 		
 		for (Operation op : oplist) {
 			
-			if (op instanceof Update) {	checkUpdateTouchesPerRegion(regions, (Update)op); }
+			if (op instanceof Update) {	checkUpdateTouchesPerRegion(regions, guids, (Update)op); }
 			
-			if (op instanceof Search) {	checkSearchTouchesPerRegion(regions, (Search)op); }
+			if (op instanceof Search) {	checkSearchTouchesPerRegion(regions, guids, (Search)op); }
 			
 		}
 		
 	}
 	
-	private static void checkUpdateTouchesPerRegion(List<Region> regions, Update up) {
+	private static void checkUpdateTouchesPerRegion(List<Region> regions, Map<Integer, Map<String, Double>> guids, Update up) {
 		
-		GUID guid = up.getGuid();
+		int guid = up.getGuid();
 		
 		Region previousRegion = null;
 		
@@ -388,60 +518,64 @@ public class Utilities {
 			int count = 0;
 
 			// Checks whether this update's GUID is already in this region
-			for (Attribute attr : guid.getAttributes()) { // iterate over guid attributes
+			for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
 
-				String guidAttrKey = attr.getKey();    
-				double guidAttrVal = attr.getValue(); 
+				if (!attr.getKey().contains("'")) { continue; } // here we just look into its guid attributes, i.e., the attributes ending with '
 
-				for (PairAttributeRange pair : region.getPairs()) { // iterate over this region attributes
+				String guidAttrKey = attr.getKey().substring(0, attr.getKey().length()-1);    
+				double guidAttrVal = attr.getValue();
 
-					String regionAttrKey    = pair.getAttrkey();         
-					double regionRangeStart = pair.getRange().getLow(); 
-					double regionRangeEnd   = pair.getRange().getHigh(); 
+				if (region.getPairs().containsKey(guidAttrKey)) { // check the region's range for this attribute
+					
+					double regionRangeStart = region.getPairs().get(guidAttrKey).getLow(); 
+					double regionRangeEnd   = region.getPairs().get(guidAttrKey).getHigh(); 
 
-					if (guidAttrKey.equals(regionAttrKey)) {
-						if (guidAttrVal < regionRangeStart || guidAttrVal > regionRangeEnd) { // checks whether guid is in this region
-							previouslyInRegion = false;
-						}
+					if (guidAttrVal < regionRangeStart || guidAttrVal >= regionRangeEnd) { // checks whether guid is in this region
+						previouslyInRegion = false;
+						break;
 					}
 				}
 			}
 
 			// If so ...
 			if (previouslyInRegion) {
+				
 				count++; // counts a touch
 				if (region.hasThisGuid(guid)) { region.removeGuid(guid); } // removes it from this region's guid list
 				previousRegion = region;
+				
+				// Sets this region's update touch count
+				int previous_count = region.getUpdateTouches();
+				region.setUpdateTouches(previous_count+count);
+				
+				break;
+				
 			}
-			
-			// Sets this region's update touch count
-			int previous_count = region.getUpdateTouches();
-			region.setUpdateTouches(previous_count+count);
 
 		}
 		
 		// II) This second iteration over regions will look for touches due to new GUID's positions
 		for (Region region : regions) {
-			
+
 			boolean comingToRegion = true;
 			int count = 0;
 
 			// Checks whether this update moves a GUID to this region
-			for (Attribute attr : up.getAttributes()) { // iterate over this update attributes
+			for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
+
+				if (attr.getKey().contains("'")) { continue; } // here we just look into this update attributes, i.e., the attributes not ending with '
 
 				String updateAttrKey = attr.getKey();
 				double updateAttrVal = attr.getValue();
 
-				for (PairAttributeRange pair : region.getPairs()) { // iterate over this region attributes
+				if (region.getPairs().containsKey(updateAttrKey)) { // check the region's range for this attribute
 
-					String regionAttrKey = pair.getAttrkey();         
-					double regionRangeStart = pair.getRange().getLow(); 
-					double regionRangeEnd = pair.getRange().getHigh();
+					double regionRangeStart = region.getPairs().get(updateAttrKey).getLow(); 
+					double regionRangeEnd = region.getPairs().get(updateAttrKey).getHigh();
 
-					if (updateAttrKey.equals(regionAttrKey)) {
-						if (updateAttrVal < regionRangeStart || updateAttrVal > regionRangeEnd) { // checks whether guid is coming to this region (or if it is staying in this region)
-							comingToRegion = false;
-						}
+					if (updateAttrVal < regionRangeStart || updateAttrVal >= regionRangeEnd) { // checks whether guid is coming to this region (or if it is staying in this region)
+						comingToRegion = false;
+						break;
 					}
 				}
 			}
@@ -449,21 +583,29 @@ public class Utilities {
 			// If so ...
 			if (comingToRegion) {
 
-				for (Attribute attr : up.getAttributes()) { guid.set_attribute(attr.getKey(), attr.getValue()); } // updates its attributes with info from this update operation			
+				// updates this GUID's attributes with info from this update operation
+				Map<String, Double> guid_attr = new HashMap<String, Double>();
+				for (Map.Entry<String, Double> up_attr : up.getAttributes().entrySet()) {
+					if (up_attr.getKey().contains("'")) { continue; } // ignore attributes ending with ', as it's old info
+					guid_attr.put(up_attr.getKey(), up_attr.getValue());
+				}
+				guids.put(guid, guid_attr);
 
 				region.insertGuid(guid); // adds it to this region's guid list
 				if (!region.equals(previousRegion)) { count++; } // if it is coming from another region, counts one more touch
+				
+				// Sets this region's update touch count
+				int previous_count = region.getUpdateTouches();
+				region.setUpdateTouches(previous_count+count);
+				
+				break;
 
 			}
-			
-			// Sets this region's update touch count
-			int previous_count = region.getUpdateTouches();
-			region.setUpdateTouches(previous_count+count);
 			
 		}
 	}
 	
-	private static void checkSearchTouchesPerRegion(List<Region> regions, Search s) {
+	private static void checkSearchTouchesPerRegion(List<Region> regions, Map<Integer, Map<String, Double>> guids, Search s) {
 
 		for (Region region : regions) { // iterate over regions
 
@@ -472,24 +614,21 @@ public class Utilities {
 
 			// I) Checks whether this search is in this region
 
-			for (PairAttributeRange searchPair : s.getPairs()) { // iterate over this search's attributes
+			for (Map.Entry<String, Range> searchPair : s.getPairs().entrySet()) { // iterate over this search's attributes
 
-				String searchAttrKey    = searchPair.getAttrkey();
-				double searchRangeStart = searchPair.getRange().getLow();
-				double searchRangeEnd   = searchPair.getRange().getHigh();
+				String searchAttrKey    = searchPair.getKey();
+				double searchRangeStart = searchPair.getValue().getLow();
+				double searchRangeEnd   = searchPair.getValue().getHigh();
 
-				for (PairAttributeRange regionPair : region.getPairs()) { // iterate over this region's attributes
+				if (region.getPairs().containsKey(searchAttrKey)) { // check the region's range for this attribute
+				
+					double regionRangeStart = region.getPairs().get(searchAttrKey).getLow();
+					double regionRangeEnd   = region.getPairs().get(searchAttrKey).getHigh();
 
-					String regionAttrKey    = regionPair.getAttrkey();
-					double regionRangeStart = regionPair.getRange().getLow();
-					double regionRangeEnd   = regionPair.getRange().getHigh();
-
-					if (searchAttrKey.equals(regionAttrKey)) {
-						if (searchRangeStart > searchRangeEnd) {
-							if (searchRangeStart > regionRangeEnd && searchRangeEnd < regionRangeStart) { isInRegion = false; }
-						} else {
-							if (searchRangeStart > regionRangeEnd || searchRangeEnd < regionRangeStart) { isInRegion = false; }
-						}
+					if (searchRangeStart > searchRangeEnd) {
+						if (searchRangeStart >= regionRangeEnd && searchRangeEnd < regionRangeStart) { isInRegion = false; break; }
+					} else {
+						if (searchRangeStart >= regionRangeEnd || searchRangeEnd < regionRangeStart) { isInRegion = false; break; }
 					}
 				}
 			}
@@ -498,29 +637,25 @@ public class Utilities {
 
 			if (isInRegion) {
 
-				for (GUID guid : region.getGUIDs()) { // iterate over this region's guids
+				for (int guid : region.getGUIDs()) { // iterate over this region's guids
 
 					boolean flag = true;
 
-					for (Attribute attr : guid.getAttributes()) { // iterate over this guid's attributes
+					for (Map.Entry<String, Double> attr : guids.get(guid).entrySet()) { // iterate over this guid's attributes
 
 						String guidAttrKey = attr.getKey();    
 						double guidAttrVal = attr.getValue();
 
-						for (PairAttributeRange pair : s.getPairs()) { // iterate over this search's attributes
+						if (s.getPairs().containsKey(guidAttrKey)) { // check the region's range for this attribute
+						
+							double searchRangeStart = s.getPairs().get(guidAttrKey).getLow();
+							double searchRangeEnd   = s.getPairs().get(guidAttrKey).getHigh();
 
-							String searchAttrKey    = pair.getAttrkey();
-							double searchRangeStart = pair.getRange().getLow();
-							double searchRangeEnd   = pair.getRange().getHigh();
-
-							if (guidAttrKey.equals(searchAttrKey)) {
-								if (searchRangeStart > searchRangeEnd) {
-									if (guidAttrVal < searchRangeStart && guidAttrVal > searchRangeEnd) { flag = false; }
-								} else {
-									if (guidAttrVal < searchRangeStart || guidAttrVal > searchRangeEnd) { flag = false; }
-								}
+							if (searchRangeStart > searchRangeEnd) {
+								if (guidAttrVal < searchRangeStart && guidAttrVal > searchRangeEnd) { flag = false; break; }
+							} else {
+								if (guidAttrVal < searchRangeStart || guidAttrVal > searchRangeEnd) { flag = false; break; }
 							}
-
 						}
 
 					}
@@ -536,50 +671,6 @@ public class Utilities {
 			region.setSearchTouches(previous_count+count);
 
 		}
-	}
-			
-	private static void distributeGUIDsAmongRegions(List<Region> regions, List<GUID> guids) {
-		
-		for (GUID guid : guids) { // iterate over GUIDs
-			
-			for (Region region : regions) { // iterate over regions
-				
-				boolean isInRegion = true;
-				
-				for (Attribute attr : guid.getAttributes()) { // iterate over this guid's attributes
-					
-					String guidAttrKey = attr.getKey();    
-					double guidAttrVal = attr.getValue();
-					
-					for (PairAttributeRange pair : region.getPairs()) { // iterate over this region's attributes
-						
-						String regionAttrKey = pair.getAttrkey();         
-						double regionRangeStart = pair.getRange().getLow(); 
-						double regionRangeEnd = pair.getRange().getHigh();
-						
-						if (guidAttrKey.equals(regionAttrKey)) {
-							
-							if (guidAttrVal < regionRangeStart || guidAttrVal > regionRangeEnd) { // checks whether guid is in this region
-								
-								isInRegion = false;
-								
-							}
-							
-						}
-						
-					}
-					
-				}
-				
-				//If so ...
-				if (isInRegion) { 
-					region.insertGuid(guid); // adds it to this region's guids list
-				}
-				
-			}
-			
-		}
-		
 	}
 	
 	private static void clear_regions_load(List<Region> regions) {
@@ -600,84 +691,5 @@ public class Utilities {
 		}
 		
 	}
-	
-//	private static void generateSearchLoadFile(int AttrNum, int SNum, Random rnd) throws IOException {
-//		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("search_load.txt")));
-//		bw.write(""+AttrNum);
-//		bw.write(" "+SNum);
-//		for (int i = 0; i < SNum; i++) {
-//			bw.write("\n/");
-//			for (int j = 1; j <= AttrNum; j++) {
-//				double v1 = rnd.nextDouble();
-//				double v2 = rnd.nextDouble();
-//				bw.write("\nA"+j);
-//				bw.write(" "+v1);
-//				bw.write(" "+v2);
-//			}
-//		}
-//		bw.close();
-//	}
-//	
-//	private static ArrayList<Search> readSearchLoadFile() throws IOException {
-//		ArrayList<Search> searches = new ArrayList<Search>();
-//		
-//		BufferedReader br = new BufferedReader(new FileReader("search_load.txt"));
-//		String[] firstLine = br.readLine().split(" ");
-//		int attrNum = Integer.parseInt(firstLine[0]);
-//		int SNum = Integer.parseInt(firstLine[1]);
-//		
-//		for (int i = 0; i < SNum; i++) {
-//			br.readLine();
-//			Search s = new Search();
-//			for (int j = 0; j < attrNum; j++) {
-//				String[] attrLine = br.readLine().split(" ");
-//				s.addPair(attrLine[0], new Range(Double.parseDouble(attrLine[1]), Double.parseDouble(attrLine[2])));
-//			}
-//			searches.add(s);
-//		}
-//		
-//		br.close();
-//		
-//		return searches;
-//	}
-//	
-//	private static void generateUpdateLoadFile(int AttrNum, int UpNum, Random rnd) throws IOException {
-//		BufferedWriter bw = new BufferedWriter(new FileWriter(new File("update_load.txt")));
-//		bw.write(""+AttrNum);
-//		bw.write(" "+UpNum);
-//		for (int i = 0; i < UpNum; i++) {
-//			bw.write("\n/");
-//			bw.write("\nGUID"+i);
-//			for (int j = 1; j <= AttrNum; j++) {
-//				double v = rnd.nextDouble();
-//				bw.write("\nA"+j);
-//				bw.write(" "+v);
-//			}
-//		}
-//		bw.close();
-//	}
-//	
-//	private static ArrayList<Update> readUpdateLoadFile() throws IOException {
-//		ArrayList<Update> updates = new ArrayList<Update>();
-//		
-//		BufferedReader br = new BufferedReader(new FileReader("update_load.txt"));
-//		String[] firstLine = br.readLine().split(" ");
-//		int attrNum = Integer.parseInt(firstLine[0]);
-//		int upNum = Integer.parseInt(firstLine[1]);
-//		
-//		for (int i = 0; i < upNum; i++) {
-//			br.readLine();
-//			Update up = new Update(br.readLine());
-//			for (int j = 0; j < attrNum; j++) {
-//				String[] attrLine = br.readLine().split(" ");
-//				up.addAttr(attrLine[0], Double.parseDouble(attrLine[1]));
-//			}
-//			updates.add(up);
-//		}
-//		
-//		br.close();
-//		
-//		return updates;
-//	}
 
 }

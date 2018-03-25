@@ -7,19 +7,21 @@ import java.util.Map;
 public class Region {
 	
 	private String name;
-	private List<PairAttributeRange> pairs;
-	private List<GUID> GUIDs;
+	private Map<String, Range> pairs;
+	private List<Integer> GUIDs;
 	private int update_touches;
 	private int search_touches;
 	private Map<Update, Double> update_load;
 	private Map<Search, Double> search_load;
+	int iteration; // attribute only to be used on heuristic V1 partitioning
 	
-	public Region(String name, List<PairAttributeRange> pairs) {
+	public Region(String name, Map<String, Range> pairs) {
 		this.name = name;
-		this.pairs = new ArrayList<PairAttributeRange>(pairs.size());
-		for (PairAttributeRange pair : pairs)
-			this.pairs.add(new PairAttributeRange(pair.getAttrkey(), new Range(pair.getRange().getLow(), pair.getRange().getHigh())));
-		GUIDs = new ArrayList<GUID>();
+		this.pairs = new HashMap<String, Range>(pairs.size());
+		for (Map.Entry<String, Range> pair : pairs.entrySet()) { 
+			this.setPair(pair.getKey(), pair.getValue().getLow(), pair.getValue().getHigh()); 
+		}
+		GUIDs = new ArrayList<Integer>();
 		update_touches = 0;
 		search_touches = 0;
 		update_load = new HashMap<Update, Double>();
@@ -30,8 +32,17 @@ public class Region {
 		return name;
 	}
 	
-	public List<PairAttributeRange> getPairs() {
-		return Collections.unmodifiableList(pairs);
+	public void setPair(String attrkey, Range range) {
+		pairs.put(attrkey, range);
+	}
+	
+	public void setPair(String attrkey, double low, double high) {
+		Range range = new Range(low, high);
+		pairs.put(attrkey, range);
+	}
+	
+	public Map<String, Range> getPairs() {
+		return Collections.unmodifiableMap(pairs);
 	}
 	
 	public int getUpdateTouches() {
@@ -88,23 +99,23 @@ public class Region {
 		update_load = new HashMap<Update, Double>();
 	}
 	
-	public boolean hasThisGuid(GUID guid) {
+	public boolean hasThisGuid(int guid) {
 		return GUIDs.contains(guid);
 	}
 	
-	public void insertGuid(GUID guid) {
+	public void insertGuid(int guid) {
 		GUIDs.add(guid);
 	}
 	
-	public void removeGuid(GUID guid) {
-		GUIDs.remove(guid);
+	public void removeGuid(int guid) {
+		GUIDs.remove((Integer)guid);
 	}
 	
 	public void clearGUIDs() {
 		GUIDs.clear();
 	}
 	
-	public List<GUID> getGUIDs() {
+	public List<Integer> getGUIDs() {
 		return Collections.unmodifiableList(GUIDs);
 	}
 

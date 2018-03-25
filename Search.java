@@ -1,38 +1,43 @@
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Search implements Operation {
 	
-	private List<PairAttributeRange> pairs;
+	private String id;
+	private Map<String, Range> pairs;
 	
-	public Search() {
-		pairs = new ArrayList<PairAttributeRange>();
+	public Search(String id) {
+		this.id = id;
+		pairs = new HashMap<String, Range>();
 	}
 	
-	public void addPair(String attrkey, Range range) {
-		PairAttributeRange pair = new PairAttributeRange(attrkey, range);
-		pairs.add(pair);
+	public String getId() {
+		return id;
 	}
 	
-	public void addPair(String attrkey, double low, double high) {
-		PairAttributeRange pair = new PairAttributeRange(attrkey, new Range(low, high));
-		pairs.add(pair);
+	public void setPair(String attrkey, Range range) {
+		pairs.put(attrkey, range);
 	}
 	
-	public List<PairAttributeRange> getPairs() {
-		return Collections.unmodifiableList(pairs);
+	public void setPair(String attrkey, double low, double high) {
+		Range range = new Range(low, high);
+		pairs.put(attrkey, range);
+	}
+	
+	public Map<String, Range> getPairs() {
+		return Collections.unmodifiableMap(pairs);
 	}
 	
 	public String toString() {
 		StringBuilder str = new StringBuilder("[");
-		for (PairAttributeRange pair : pairs) {
+		for (Map.Entry<String, Range> pair : pairs.entrySet()) {
 			str.append("\n(");
-			str.append(pair.getAttrkey());
+			str.append(pair.getKey());
 			str.append(",[");
-			str.append(pair.getRange().getLow());
+			str.append(pair.getValue().getLow());
 			str.append(",");
-			str.append(pair.getRange().getHigh());
+			str.append(pair.getValue().getHigh());
 			str.append("]");
 			str.append("),");
 		}
