@@ -6,6 +6,9 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.TreeMap;
 
+import streaming.Block;
+import streaming.GKWindow;
+
 public class HeuristicV2 {
 	
 	private int num_machines;
@@ -16,12 +19,10 @@ public class HeuristicV2 {
 		this.regions = regions;
 	}
 	
-	private Map<Double, Integer> updateAndSearchLoadCounter(Queue<Operation> oplist) {
+	private Map<Double, Integer> updateAndSearchLoadCounter(String axis, Queue<Operation> oplist) {
 
 		Map<Double, Integer> loadPerPoint = new TreeMap<Double, Integer>();
 		
-		String axis = "A1"; // here we define the attribute axis we are splitting. For simplicity's sake, we pick first attribute.
-
 		for (Operation op : oplist) { // iterate over all operations
 
 			if (op instanceof Update) {
@@ -100,12 +101,10 @@ public class HeuristicV2 {
 
 	}
 	
-	private Map<Double, Integer> updateAndSearchTouchesCounter(Queue<Operation> oplist) {
+	private Map<Double, Integer> updateAndSearchTouchesCounter(String axis, Queue<Operation> oplist) {
 
 		Map<Double, Integer> touchesPerPoint = new TreeMap<Double, Integer>();
 		Map<Double, Integer> guidsPerPoint   = new TreeMap<Double, Integer>();
-
-		String axis = "A1"; // here we define the attribute axis we are splitting. For simplicity's sake, we pick first attribute.
 
 		for (Operation op : oplist) { // iterate over all operations
 
@@ -206,14 +205,14 @@ public class HeuristicV2 {
 	 * 
 	 * Given update & search loads or touches, we find the quantile points regarding only one attribute axis.
 	 * Then, we split the existing region at its *square root of n* - 1 quantile points, generating *square root of n* new regions. */
-	public List<Region> partition(String metric, Queue<Operation> oplist) {
+	public List<Region> partition(String metric, String axis, Queue<Operation> oplist) {
 		
 		Map<Double, Integer> metricPerPoint;
 		
 		if (metric.toLowerCase().equals("touches")) {
-			metricPerPoint = updateAndSearchTouchesCounter(oplist);
+			metricPerPoint = updateAndSearchTouchesCounter(axis, oplist);
 		} else {
-			metricPerPoint = updateAndSearchLoadCounter(oplist);
+			metricPerPoint = updateAndSearchLoadCounter(axis, oplist);
 		}
 		
 		int total = 0;
@@ -221,25 +220,24 @@ public class HeuristicV2 {
 		// calculates either total number of touches or total load
 		for (int val : metricPerPoint.values()) { total += val; }
 		
-		Queue<Double> quantiles = new LinkedList<Double>();
+		Queue<Double> phi_list = new LinkedList<Double>();
 
 		int n_regions = (int) Math.sqrt(num_machines);
 
-		// a quantile is 'i/n_regions', with '1 <= i <= n_regions - 1'
+		// phi = 'i/n_regions', with '1 <= i <= n_regions - 1'
 		for (int i = 1; i <= n_regions-1; i++) {
-			double quantile = i/(double)n_regions;
-			quantiles.add(quantile);		
+			double phi = i/(double)n_regions;
+			phi_list.add(phi);		
 		}
 
 		List<Region> newRegions = new ArrayList<Region>();
 		
-		String axis = "A1";
 		int count = 0, low_range = 0, max_range = 1, region_index = 1;
 		double previous_value = low_range;
 				
 		for (double d : metricPerPoint.keySet()) { // iterate over the keys, which are the candidate points to be quantile
 			
-			if (quantiles.isEmpty()) { // check whether all quantile points were already found
+			if (phi_list.isEmpty()) { // check whether all quantile points were already found
 				
 				Region newRegion = new Region("R"+region_index++, regions.get(0).getPairs());
 				
@@ -254,11 +252,11 @@ public class HeuristicV2 {
 			
 			double percentage = count/(double)total;
 			
-			double quantile = quantiles.peek();
+			double phi = phi_list.peek();
 
-			if (percentage >= quantile ) { // if either touches or load percentage until 'd' is greater than or equal to 'quantile', 'd' is that 'quantile'
+			if (percentage >= phi ) { // if either touches or load percentage until 'd' is greater than or equal to 'phi', 'd' is a quantile
 				
-				quantiles.poll();
+				phi_list.poll();
 				
 				Region newRegion = new Region("R"+region_index++, regions.get(0).getPairs());
 								
@@ -268,7 +266,7 @@ public class HeuristicV2 {
 				
 				newRegions.add(newRegion);
 				
-				System.out.println("Quantile: "+quantile+" | Point: "+d+" | Percentage: "+percentage);
+				System.out.println("Phi: "+phi+" | Quantile: "+d+" | Percentage: "+percentage);
 
 			}
 			
@@ -279,6 +277,71 @@ public class HeuristicV2 {
 		System.out.println(toString());
 		
 		return Collections.unmodifiableList(regions);
+	}
+	
+	public List<Region> partitionGK(String metric, String axis, double e, Queue<Operation> oplist) {
+		
+		Map<Double, Integer> metricPerPoint;
+		
+		if (metric.toLowerCase().equals("touches")) {
+			metricPerPoint = updateAndSearchTouchesCounter(axis, oplist);
+		} else {
+			metricPerPoint = updateAndSearchLoadCounter(axis, oplist);
+		}
+		
+		int total = 0;
+		
+		// calculates either total number of touches or total load
+		for (int val : metricPerPoint.values()) { total += val;	}
+			
+		int n = 0, w = total;
+		
+		ArrayList<Block> blist = new ArrayList<Block>();
+		
+		for (Map.Entry<Double, Integer>  entry : metricPerPoint.entrySet()) {
+			for (int i = 0; i < entry.getValue(); i++) {
+				GKWindow.greenwald_khanna_window(n, entry.getKey(), w, e, blist);
+				n++;
+			}
+		}
+				
+		List<Region> newRegions = new ArrayList<Region>();
+		
+		int n_regions = (int) Math.sqrt(num_machines), r = 1;
+		
+		double low = 0, high = 1;
+		
+		// phi = 'i/n_regions', with '1 <= i <= n_regions - 1'
+		for (int i = 1; i <= n_regions-1; i++) {
+			
+			double phi = i/(double)n_regions;
+			
+			ArrayList<Double> quantile = GKWindow.quantile(phi, w, e, blist);
+			
+			int pos = (int) Math.floor(quantile.size()/2d);
+					
+			double q = quantile.get(pos);
+			
+			Region newRegion = new Region("R"+r, regions.get(0).getPairs());
+			newRegion.setPair(axis, low, q);
+			newRegions.add(newRegion);
+			r++;
+			low = q;
+			
+			System.out.println("Phi: "+phi+" | Quantile: "+q);
+			
+		}
+		
+		Region newRegion = new Region("R"+r, regions.get(0).getPairs());
+		newRegion.setPair(axis, low, high);
+		newRegions.add(newRegion);
+				
+		regions = newRegions;
+		
+		System.out.println(toString());
+		
+		return Collections.unmodifiableList(regions);
+		
 	}
 	
 	public String toString() {

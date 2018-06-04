@@ -1,5 +1,6 @@
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -65,10 +66,10 @@ public class Main {
 		int num_attr = 3;
 		int num_mach = 64;
 		int num_max_guids = 500;
-		int num_update_training_samples = 10000;
-		int num_search_training_samples = 10000;
-		int num_update_new_samples = 10000;
-		int num_search_new_samples = 10000;
+		int num_update_training_samples = 500000;
+		int num_search_training_samples = 500000;
+		int num_update_new_samples = 500000;
+		int num_search_new_samples = 500000;
 		int num_experiments = 100;
 		
 		String dist = "uniform";
@@ -76,9 +77,11 @@ public class Main {
 		boolean touches = true;
 		
 		// Generates update & search loads for training
+		System.out.println("["+LocalTime.now()+"] Generating training load...");
 		Utilities.generateOperations(num_update_training_samples, num_search_training_samples, num_attr, num_max_guids, dist, "training.json", new Random());
 		
 		// Generates update & search loads for our experiments
+		System.out.println("["+LocalTime.now()+"] Generating experimental load...");
 		for (int i = 1; i <= num_experiments; i++) {
 			Utilities.generateOperations(num_update_new_samples, num_search_new_samples, num_attr, num_max_guids, dist, "./experiment_load/experiment"+i+".json", new Random());
 		}
@@ -106,19 +109,30 @@ public class Main {
 			
 			if (h==1) {
 				fileName = "heuristic1.txt";
+				System.out.println("["+LocalTime.now()+"] Starting heuristic I...\n");
 				regions = heuristic1.partition(oplist);
 			} else if (h==2) {
 				fileName = "heuristic2.txt";
-				regions = heuristic2.partition("touches", oplist);
+				System.out.println("["+LocalTime.now()+"] Starting heuristic II...\n");
+				if (touches) {
+					regions = heuristic2.partition("touches", "A1", oplist);
+				} else {
+					regions = heuristic2.partition("load", "A1", oplist);
+				}
 			} else {
 				fileName = "heuristic3.txt";
-				regions = heuristic3.partition("load", oplist);
+				System.out.println("["+LocalTime.now()+"] Starting heuristic III...\n");
+				if (touches) {
+					regions = heuristic3.partitionGK("touches", "A1", 1/512d, oplist);
+				} else {
+					regions = heuristic3.partitionGK("load", "A1", 1/8d, oplist);
+				}
 			}
 			
 			if (touches) {
-				System.out.println(Utilities.JFI("touches", oplist, regions)+"\n");
+				System.out.println("JFI: "+Utilities.JFI("touches", oplist, regions)+'\n');
 			} else {
-				System.out.println(Utilities.JFI("load", oplist, regions)+"\n");
+				System.out.println("JFI: "+Utilities.JFI("load", oplist, regions)+'\n');
 			}
 			
 			Map<Integer, List<Double>> metricValuesPerRegion = new TreeMap<Integer, List<Double>>();
