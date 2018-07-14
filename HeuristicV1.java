@@ -9,9 +9,9 @@ public class HeuristicV1 {
 	private int num_machines;
 	private List<Region> regions;
 	
-	public HeuristicV1(int num_machines, List<Region> regions) {
+	public HeuristicV1(int num_attr, int num_machines) {
 		this.num_machines = num_machines;
-		this.regions = regions;
+		regions = Utilities.buildNewRegions(num_attr);
 	}
 	
 	/* Returns the least splitted region by looking for the oldest region, i.e., the region with the smallest iteration flag. */

@@ -1,8 +1,8 @@
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -11,53 +11,42 @@ import java.util.TreeMap;
 
 public class Main {
 	
-	private static Map<Integer, Double> calculateConfidenceInterval(Map<Integer, List<Double>> values, Map<Integer, Double> mean) {
+	private static void metricDistributionPerRegion(Queue<Operation> oplist, List<Region> regions, String metric, String fileName) {
 		
-		Map<Integer, Double> confidenceInterval = new TreeMap<Integer, Double>();
-
-		for (Map.Entry<Integer, List<Double>> e : values.entrySet()) {
+		double jfi = Utilities.JFI(metric, oplist, regions);
+		
+		PrintWriter pw = null;
+		
+		try {
 			
-			double squaredDifferenceSum = 0.0, variance = 0.0, standardDeviation = 0.0;
+			pw = new PrintWriter(fileName);
 			
-			for (double num : e.getValue()) {
+			pw.println("region\tmetric");
 			
-				squaredDifferenceSum += (num - mean.get(e.getKey())) * (num - mean.get(e.getKey()));
-			
+			for (Region r : regions) {
+				
+				int index = regions.indexOf(r)+1;
+				
+				double metricValue = -1;
+				
+				if (metric.toLowerCase().equals("touches")) {
+					metricValue = r.getUpdateTouches()+r.getSearchTouches();
+				} else if (metric.toLowerCase().equals("load")) {
+					metricValue = r.getUpdateLoad()+r.getSearchLoad();
+				}
+				
+				pw.println(index+"\t"+metricValue);
+				
 			}
 			
-			variance = squaredDifferenceSum / e.getValue().size();
-			standardDeviation = Math.sqrt(variance);
+			pw.println();
+			pw.print("JFI: "+jfi);
 			
-			// value for 95% confidence interval
-		    double confidenceLevel = 1.96;
-		    double delta = confidenceLevel * standardDeviation / Math.sqrt(e.getValue().size());
-			
-			confidenceInterval.put(e.getKey(), delta);
-			
+		} catch (FileNotFoundException err) { 
+			err.printStackTrace(); 
+		} finally {
+			pw.close();
 		}
-		
-		return confidenceInterval;
-		
-	}
-	
-	private static double calculateConfidenceIterval(ArrayList<Double> values, double mean) {
-		
-		double squaredDifferenceSum = 0.0, variance = 0.0, standardDeviation = 0.0;
-		
-		for (double num : values) {
-		
-			squaredDifferenceSum += (num - mean) * (num - mean);
-		
-		}
-		
-		variance = squaredDifferenceSum / values.size();
-		standardDeviation = Math.sqrt(variance);
-		
-		// value for 95% confidence interval
-	    double confidenceLevel = 1.96;
-	    double delta = confidenceLevel * standardDeviation / Math.sqrt(values.size());
-		
-		return delta;
 		
 	}
 	
@@ -65,165 +54,151 @@ public class Main {
 		
 		int num_attr = 3;
 		int num_mach = 64;
-		int num_max_guids = 500;
-		int num_update_training_samples = 500000;
-		int num_search_training_samples = 500000;
-		int num_update_new_samples = 500000;
-		int num_search_new_samples = 500000;
-		int num_experiments = 100;
+		int num_max_guids = 500;		
+		int update_sample_size = 524288; // 2^19
+		int search_sample_size = 524288; // 2^19
+		int window_size = 67108864; // 2^27
 		
+		String axis = "A1";
 		String dist = "uniform";
+		String metric = "touches";
 		
-		boolean touches = true;
+		double deviation = 0.15;
+		double mean = 0.5;
+		double lambda = 1;
+		double low = 0;
+		double high = 1;
 		
-		// Generates update & search loads for training
-		System.out.println("["+LocalTime.now()+"] Generating training load...");
-		Utilities.generateOperations(num_update_training_samples, num_search_training_samples, num_attr, num_max_guids, dist, "training.json", new Random());
-		
-		// Generates update & search loads for our experiments
-		System.out.println("["+LocalTime.now()+"] Generating experimental load...");
-		for (int i = 1; i <= num_experiments; i++) {
-			Utilities.generateOperations(num_update_new_samples, num_search_new_samples, num_attr, num_max_guids, dist, "./experiment_load/experiment"+i+".json", new Random());
+		Map<String, Double> distParams = new HashMap<String, Double>();
+		switch(dist.toLowerCase()) {	
+			case "normal":
+			case "gaussian":
+				distParams.put("deviation", deviation);
+				distParams.put("mean", mean);
+				break;
+			case "exponential":
+				distParams.put("lambda", lambda);
+				break;
+			case "uniform":
+			default:
+				distParams.put("low", low);
+				distParams.put("high", high);
+				break;
 		}
-				
-		Map<String, Range> pairs = new HashMap<String, Range>(); // pairs attribute-range
 		
-		for (int i = 1; i <= num_attr; i++) {
-			pairs.put("A"+i, new Range(0.0, 1.0));
-		}
-		
-		Region region = new Region("R1", pairs);	
-		
-		List<Region> regions = new ArrayList<Region>();
-		regions.add(region);
-		
-		HeuristicV1 heuristic1 = new HeuristicV1(num_mach, regions);
-		HeuristicV2 heuristic2 = new HeuristicV2(num_mach, regions);
-		HeuristicV2 heuristic3 = new HeuristicV2(num_mach, regions);
-				
-		Queue<Operation> oplist = Utilities.readOperationsFile("training.json");
-		
-		for (int h = 1; h <= 3; h++) {
-			
-			String fileName;
-			
-			if (h==1) {
-				fileName = "heuristic1.txt";
-				System.out.println("["+LocalTime.now()+"] Starting heuristic I...\n");
-				regions = heuristic1.partition(oplist);
-			} else if (h==2) {
-				fileName = "heuristic2.txt";
-				System.out.println("["+LocalTime.now()+"] Starting heuristic II...\n");
-				if (touches) {
-					regions = heuristic2.partition("touches", "A1", oplist);
-				} else {
-					regions = heuristic2.partition("load", "A1", oplist);
-				}
-			} else {
-				fileName = "heuristic3.txt";
-				System.out.println("["+LocalTime.now()+"] Starting heuristic III...\n");
-				if (touches) {
-					regions = heuristic3.partitionGK("touches", "A1", 1/512d, oplist);
-				} else {
-					regions = heuristic3.partitionGK("load", "A1", 1/8d, oplist);
-				}
-			}
-			
-			if (touches) {
-				System.out.println("JFI: "+Utilities.JFI("touches", oplist, regions)+'\n');
-			} else {
-				System.out.println("JFI: "+Utilities.JFI("load", oplist, regions)+'\n');
-			}
-			
-			Map<Integer, List<Double>> metricValuesPerRegion = new TreeMap<Integer, List<Double>>();
-			
-			ArrayList<Double> JFIs = new ArrayList<Double>(num_experiments);
-			
-			for (int i = 1; i <= num_experiments; i++) {
-				
-				Queue<Operation> newOplist = Utilities.readOperationsFile("./experiment_load/experiment"+i+".json");
-				
-				// Calculates JFI
-				if (touches) {
-					JFIs.add(Utilities.JFI("touches", newOplist, regions));
-				} else {
-					JFIs.add(Utilities.JFI("load", newOplist, regions));
-				}
-				
-				for (Region r : regions) {
-					
-					int index = regions.indexOf(r)+1;
-					
-					double metricValue = 0;
-					if (touches) {
-						metricValue = r.getUpdateTouches()+r.getSearchTouches();
-					} else {
-						metricValue = r.getUpdateLoad()+r.getSearchLoad();
-					}
-					
-					if (!metricValuesPerRegion.containsKey(index)) {
-						ArrayList<Double> metricValues = new ArrayList<Double>(num_experiments);
-						metricValues.add(metricValue);
-						metricValuesPerRegion.put(index, metricValues);
-					} else {
-						metricValuesPerRegion.get(index).add(metricValue);
-					}
-					
-				}
-				
-			}
-			
-			Map<Integer, Double> meansPerRegion = new TreeMap<Integer, Double>();
-	
-			for (Map.Entry<Integer, List<Double>> e : metricValuesPerRegion.entrySet()) {
-				
-				List<Double> metricValues = e.getValue();
-				
-				double sum = 0;
-				for (double val : metricValues) {
-					sum += val;
-				}
-				
-				double mean = sum / metricValues.size();
-				meansPerRegion.put(e.getKey(), mean);
-				
-			}
-			
-			Map<Integer, Double> CI = calculateConfidenceInterval(metricValuesPerRegion, meansPerRegion);
-			
-			double sum = 0.0;
-			for (double d : JFIs)
-				sum += d;
-			double JFI_mean = sum/JFIs.size();
-			
-			double JFI_confidence = calculateConfidenceIterval(JFIs, JFI_mean);
+		double e = 1/64d;
+		int period = 65536; // 2^16
 
-			PrintWriter pw;
-			
-			try {
-				
-				pw = new PrintWriter(fileName);
-				
-				pw.println("x,\tmean,\tdelta");
-				
-				for (Map.Entry<Integer, Double> e : CI.entrySet()) {
+		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
+		
+		// Generates update & search loads
+		System.out.println("["+LocalTime.now()+"] Generating training sample...");
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/training_sample.json", new Random());
+		System.out.println("["+LocalTime.now()+"] Done!");
+		System.out.println("["+LocalTime.now()+"] Generating testing sample...");
+		distParams.put("low", 0.3);
+		distParams.put("high", 0.7);
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample.json", new Random());
+		System.out.println("["+LocalTime.now()+"] Done!");
 								
-					pw.println(e.getKey()+",\t"+meansPerRegion.get(e.getKey())+",\t"+e.getValue());
-					
+//		HeuristicV1 heuristic1 = new HeuristicV1(num_attr, num_mach);
+		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
+		HeuristicV3 heuristic3 = new HeuristicV3(num_attr, num_mach, axis, metric, window_size, e);
+		
+		/* TRAINING HEURISTICS */
+		
+		// Reading operations from training sample
+		System.out.println("["+LocalTime.now()+"] Reading training sample file...");
+		Queue<Operation> oplist = Utilities.readOperationsFile("./samples/training_sample.json");
+		System.out.println("["+LocalTime.now()+"] Done!");
+		
+		for (Operation op : oplist) {
+			heuristic3.insertGK(op);
+		}
+		
+		// Partitions region
+//		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 1...");
+//		List<Region> regions1 = heuristic1.partition(oplist);
+//		System.out.println("["+LocalTime.now()+"] Done!");
+		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 2...");
+		List<Region> regions2 = heuristic2.partition(oplist);
+		System.out.println("["+LocalTime.now()+"] Done!");
+		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 3...");
+		List<Region> regions3 = heuristic3.partitionGK();
+		System.out.println("["+LocalTime.now()+"] Done!");
+		
+		/* TESTING HEURISTICS */
+		
+		// Reading operations from testing sample
+		System.out.println("["+LocalTime.now()+"] Reading testing sample file...");
+		oplist = Utilities.readOperationsFile("./samples/testing_sample.json");
+		System.out.println("["+LocalTime.now()+"] Done!");
+		
+		Map<Double, Double> old_quantiles = new TreeMap<Double, Double>();
+		for (Map.Entry<Double, Double> entry : heuristic3.getQuantiles().entrySet()) {
+			old_quantiles.put(entry.getKey(), entry.getValue());
+		}
+		
+		Queue<Operation> suboplist = new LinkedList<Operation>();
+		int count = 0;
+		while (!oplist.isEmpty()) {
+			
+			if(count != 0 && count % period == 0) {
+				
+				System.out.println("["+LocalTime.now()+"] Checking whether heuristic 3 quantiles are still valid...");
+				
+				heuristic3.updateQuantiles();
+				
+				Map<Double, Double> new_quantiles = new TreeMap<Double, Double>();
+				for (Map.Entry<Double, Double> entry : heuristic3.getQuantiles().entrySet()) {
+					new_quantiles.put(entry.getKey(), entry.getValue());
 				}
 				
-				pw.println();
-				pw.println("JFI,\tdelta");
-				pw.print(JFI_mean+"\t"+JFI_confidence);
+				boolean must_repartition = false;
+				for (Map.Entry<Double, Double> entry : old_quantiles.entrySet()) {
+					double phi = entry.getKey();
+					double old_quant = entry.getValue();
+					double new_quant = new_quantiles.get(phi);
+					
+					double diff = Math.abs(new_quant - old_quant)/old_quant;
+					if ( diff >= 0.1 ) {
+						must_repartition = true;
+						System.out.println("Must repartition!");
+						break;
+					}
+				}
 				
-				pw.close();
+				if (must_repartition) {
+					System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 3...");
+					regions3 = heuristic3.partitionGK();
+					old_quantiles = new_quantiles;
+				} else {
+					System.out.println("No need to repartition :)");
+				}
 				
-			} catch (FileNotFoundException e) { 
-				e.printStackTrace(); 
+				System.out.println("["+LocalTime.now()+"] Done!");
+				
+				System.out.println("["+LocalTime.now()+"] Calculating metric distribution per region...");
+//				metricDistributionPerRegion(suboplist, regions1, metric, "./heuristic1/heuristic1_dist_"+LocalTime.now()+".txt");
+				metricDistributionPerRegion(suboplist, regions2, metric, "./heuristic2/heuristic2_dist_"+LocalTime.now()+".txt");
+				metricDistributionPerRegion(suboplist, regions3, metric, "./heuristic3/heuristic3_dist_"+LocalTime.now()+".txt");
+				System.out.println("["+LocalTime.now()+"] Done!");
+
+				count = 0;
+				suboplist = new LinkedList<Operation>();
+				
+			} else {
+				
+				Operation op = oplist.poll();
+				heuristic3.insertGK(op);
+				suboplist.add(op);
+				
+				count++;
+				
 			}
 			
 		}
-		
+
 	}
 
 }

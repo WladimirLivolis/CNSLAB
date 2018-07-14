@@ -106,6 +106,22 @@ public class Utilities {
 		return copy;
 	}
 	
+	public static List<Region> buildNewRegions(int num_attr) {
+		
+		Map<String, Range> pairs = new HashMap<String, Range>(); // pairs attribute-range
+		
+		for (int i = 1; i <= num_attr; i++) {
+			pairs.put("A"+i, new Range(0.0, 1.0));
+		}
+		
+		Region region = new Region("R1", pairs);	
+		
+		List<Region> regions = new ArrayList<Region>();
+		regions.add(region);
+		
+		return regions;
+	}
+	
 	private static double nextExponential(double lambda, Random rnd) {
 		double val;
 		do {
@@ -118,31 +134,34 @@ public class Utilities {
 		return rnd.nextGaussian()*deviation+mean;
 	}
 	
-	private static double nextVal(String dist, Random rnd) {
+	private static double nextVal(String dist, Map<String, Double> distParams, Random rnd) {
 		double val;
 		switch(dist.toLowerCase()) {	
 			case "normal":
 			case "gaussian":
-				val = nextGaussian(0.15, 0.5, rnd);
+				double deviation = distParams.get("deviation");
+				double mean = distParams.get("mean");
+				val = nextGaussian(deviation, mean, rnd);
 				break;
 			case "exponential":
-				val = nextExponential(1, rnd);
+				double lambda = distParams.get("lambda");
+				val = nextExponential(lambda, rnd);
 				break;
 			case "uniform":
 			default:
-				val = rnd.nextDouble();
+				double low = distParams.get("low");
+				double high = distParams.get("high");
+				val = low + (high - low) * rnd.nextDouble();
 				break;
 		}
 		return val;
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static void generateOperations(int updateQty, int searchQty, int attrQty, int guidMaxQty, String distribution, String fileName, Random rnd) {
+	public static void generateOperations(int updateQty, int searchQty, int attrQty, int guidMaxQty, Map<Integer, Map<String, Double>> guids, String distribution, Map<String, Double> distParams, String fileName, Random rnd) {
 		
 		// Creates a JSONArray for operations
 		JSONArray operations = new JSONArray();
-		
-		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
 		
 		int numSearches = 0, numUpdates = 0;
 				
@@ -157,13 +176,13 @@ public class Utilities {
 			
 			if (update) {
 				newOperation.put("Id", "U"+(++numUpdates));
-				generateUpdate(attrQty, guidMaxQty, distribution, guids, newOperation, rnd);
+				generateUpdate(attrQty, guidMaxQty, distribution, distParams, guids, newOperation, rnd);
 				operations.add(newOperation);
 			} 
 			
 			if (search) {
 				newOperation.put("Id", "S"+(++numSearches));
-				generateSearch(attrQty, distribution, newOperation, rnd);
+				generateSearch(attrQty, distribution, distParams, newOperation, rnd);
 				operations.add(newOperation);
 			}
 			
@@ -187,7 +206,7 @@ public class Utilities {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static void generateUpdate(int attrQty, int guidMaxQty, String distribution, Map<Integer, Map<String, Double>> guids, JSONObject newOperation, Random rnd) {
+	private static void generateUpdate(int attrQty, int guidMaxQty, String distribution, Map<String, Double> distParams, Map<Integer, Map<String, Double>> guids, JSONObject newOperation, Random rnd) {
 				
 		int guid = rnd.nextInt(guidMaxQty) + 1;
 
@@ -216,7 +235,7 @@ public class Utilities {
 			updateAttrValPairs.add(pair);
 			
 			// new value for this attribute
-			double v = nextVal(distribution, rnd);
+			double v = nextVal(distribution, distParams, rnd);
 			
 			pair = new LinkedHashMap<String, Object>(2);
 			
@@ -236,15 +255,15 @@ public class Utilities {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static void generateSearch(int attrQty, String distribution, JSONObject newOperation, Random rnd) {
+	private static void generateSearch(int attrQty, String distribution, Map<String, Double> distParams, JSONObject newOperation, Random rnd) {
 		
 		// Creates a JSONArray for Attribute-Range Pairs
 		JSONArray searchAttrRangePairs = new JSONArray();
 		
 		for (int i = 1; i <= attrQty; i++) {
 			
-			double v1 = nextVal(distribution, rnd);
-			double v2 = nextVal(distribution, rnd);
+			double v1 = nextVal(distribution, distParams, rnd);
+			double v2 = nextVal(distribution, distParams, rnd);
 			
 			Map<String, Double> rangeMap = new LinkedHashMap<String, Double>(2);
 			
