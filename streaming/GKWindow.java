@@ -28,7 +28,7 @@ public class GKWindow {
 
 		Block under_construction = blockList.get(blockList.size()-1);
 
-		GK.greenwald_khanna(under_construction.numObs(), v, under_construction.summary, e/2);
+		GK.greenwald_khanna(under_construction.numObs(), v, under_construction.summary(), e/2);
 
 		under_construction.incrNumObs();
 
@@ -36,11 +36,11 @@ public class GKWindow {
 
 	public static ArrayList<Double> quantile(double phi, int w, double e, ArrayList<Block> blist) {
 
-		ArrayList<Tuple> summary = blist.get(0).summary;
+		ArrayList<Tuple> summary = blist.get(0).summary();
 
 		for (int i = 1; i < blist.size(); i++) {
 
-			summary = merge(summary, blist.get(i).summary);
+			summary = merge(summary, blist.get(i).summary());
 
 		}
 
@@ -50,7 +50,7 @@ public class GKWindow {
 	}
 
 	public static ArrayList<Tuple> merge(ArrayList<Tuple> s1, ArrayList<Tuple> s2) {
-		
+
 		int i = 0, j = 0;
 
 		ArrayList<Tuple> s = new ArrayList<Tuple>();
@@ -136,20 +136,15 @@ public class GKWindow {
 
 	private static void updateRanks(int pos, ArrayList<Tuple> s) {
 		Tuple t = s.get(pos);
-		if (t.getRmin() == -1) {
-			int rmin;
-			if (pos == 0) {
-				rmin = t.getG();
-			} else {
-				rmin = t.getG() + s.get(pos-1).getRmin();
-			}
-			t.setRmin(rmin);
+		int rmin, rmax;
+		if (pos == 0) {
+			rmin = t.getG();
+		} else {
+			rmin = t.getG() + s.get(pos-1).getRmin();
 		}
-		if (t.getRmax() == -1) {
-			int rmax;
-			rmax = t.getD() + t.getRmin();
-			t.setRmax(rmax);
-		}
+		rmax = t.getD() + rmin;
+		t.setRmin(rmin);
+		t.setRmax(rmax);
 	}
 
 }

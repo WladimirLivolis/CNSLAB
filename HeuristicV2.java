@@ -1,3 +1,5 @@
+import java.io.PrintWriter;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -12,14 +14,18 @@ import streaming.GKWindow;
 public class HeuristicV2 {
 	
 	private int num_machines;
+	private String axis;
+	private String metric;
 	private List<Region> regions;
 	
-	public HeuristicV2(int num_machines, List<Region> regions) {
+	public HeuristicV2(int num_attr, int num_machines, String axis, String metric) {
 		this.num_machines = num_machines;
-		this.regions = regions;
+		this.axis = axis;
+		this.metric = metric;
+		regions = Utilities.buildNewRegions(num_attr);
 	}
 	
-	private Map<Double, Integer> updateAndSearchLoadCounter(String axis, Queue<Operation> oplist) {
+	private Map<Double, Integer> updateAndSearchLoadCounter(Queue<Operation> oplist) {
 
 		Map<Double, Integer> loadPerPoint = new TreeMap<Double, Integer>();
 		
@@ -101,7 +107,7 @@ public class HeuristicV2 {
 
 	}
 	
-	private Map<Double, Integer> updateAndSearchTouchesCounter(String axis, Queue<Operation> oplist) {
+	private Map<Double, Integer> updateAndSearchTouchesCounter(Queue<Operation> oplist) {
 
 		Map<Double, Integer> touchesPerPoint = new TreeMap<Double, Integer>();
 		Map<Double, Integer> guidsPerPoint   = new TreeMap<Double, Integer>();
@@ -179,14 +185,14 @@ public class HeuristicV2 {
 					// here we'll check whether this point is in this search's range
 					if (condition) {
 						
-						// if so, the number of guids on this point is the number of touches on this point
-						int touchesOnThisPoint = e.getValue();
+						// if so, the number of guids at this point is the number of touches at this point
+						int touchesAtThisPoint = e.getValue();
 
 						if (touchesPerPoint.containsKey(point)) {
 							int previous_count = touchesPerPoint.get(point);
-							touchesPerPoint.put(point, previous_count+touchesOnThisPoint);
+							touchesPerPoint.put(point, previous_count+touchesAtThisPoint);
 						} else {
-							touchesPerPoint.put(point, touchesOnThisPoint);
+							touchesPerPoint.put(point, touchesAtThisPoint);
 						}
 
 					}
@@ -205,14 +211,14 @@ public class HeuristicV2 {
 	 * 
 	 * Given update & search loads or touches, we find the quantile points regarding only one attribute axis.
 	 * Then, we split the existing region at its *square root of n* - 1 quantile points, generating *square root of n* new regions. */
-	public List<Region> partition(String metric, String axis, Queue<Operation> oplist) {
+	public List<Region> partition(Queue<Operation> oplist) {
 		
 		Map<Double, Integer> metricPerPoint;
 		
 		if (metric.toLowerCase().equals("touches")) {
-			metricPerPoint = updateAndSearchTouchesCounter(axis, oplist);
+			metricPerPoint = updateAndSearchTouchesCounter(oplist);
 		} else {
-			metricPerPoint = updateAndSearchLoadCounter(axis, oplist);
+			metricPerPoint = updateAndSearchLoadCounter(oplist);
 		}
 		
 		int total = 0;
@@ -234,42 +240,54 @@ public class HeuristicV2 {
 		
 		int count = 0, low_range = 0, max_range = 1, region_index = 1;
 		double previous_value = low_range;
-				
-		for (double d : metricPerPoint.keySet()) { // iterate over the keys, which are the candidate points to be quantile
-			
-			if (phi_list.isEmpty()) { // check whether all quantile points were already found
-				
-				Region newRegion = new Region("R"+region_index++, regions.get(0).getPairs());
-				
-				newRegion.setPair(axis, previous_value, max_range);
-				
-				newRegions.add(newRegion);
-				
-				break;
-			}
 		
-			count += metricPerPoint.get(d);  // 'count' represents either accumulated amount of touches or load until point 'd'
+		try {
 			
-			double percentage = count/(double)total;
-			
-			double phi = phi_list.peek();
+			PrintWriter pw = new PrintWriter("./heuristic2/heuristic2_quant_"+LocalTime.now()+".txt");
+			pw.println("phi\tquantile");
 
-			if (percentage >= phi ) { // if either touches or load percentage until 'd' is greater than or equal to 'phi', 'd' is a quantile
-				
-				phi_list.poll();
-				
-				Region newRegion = new Region("R"+region_index++, regions.get(0).getPairs());
-								
-				newRegion.setPair(axis, previous_value, d);
-				
-				previous_value = d;
-				
-				newRegions.add(newRegion);
-				
-				System.out.println("Phi: "+phi+" | Quantile: "+d+" | Percentage: "+percentage);
+			for (double d : metricPerPoint.keySet()) { // iterate over the keys, which are the candidate points to be quantile
+
+				if (phi_list.isEmpty()) { // check whether all quantile points were already found
+
+					Region newRegion = new Region("R"+region_index++, regions.get(0).getPairs());
+
+					newRegion.setPair(axis, previous_value, max_range);
+
+					newRegions.add(newRegion);
+
+					break;
+				}
+
+				count += metricPerPoint.get(d);  // 'count' represents either accumulated amount of touches or load until point 'd'
+
+				double percentage = count/(double)total;
+
+				double phi = phi_list.peek();
+
+				if (percentage >= phi ) { // if either touches or load percentage until 'd' is greater than or equal to 'phi', 'd' is a quantile
+
+					phi_list.poll();
+
+					Region newRegion = new Region("R"+region_index++, regions.get(0).getPairs());
+
+					newRegion.setPair(axis, previous_value, d);
+
+					previous_value = d;
+
+					newRegions.add(newRegion);
+
+					System.out.println("Phi: "+phi+" | Quantile: "+d+" | Percentage: "+percentage);
+					pw.println(phi+"\t"+d);
+
+				}
 
 			}
 			
+			pw.close();
+		
+		} catch (Exception err) {
+			err.printStackTrace();
 		}
 		
 		regions = newRegions;
@@ -284,9 +302,9 @@ public class HeuristicV2 {
 		Map<Double, Integer> metricPerPoint;
 		
 		if (metric.toLowerCase().equals("touches")) {
-			metricPerPoint = updateAndSearchTouchesCounter(axis, oplist);
+			metricPerPoint = updateAndSearchTouchesCounter(oplist);
 		} else {
-			metricPerPoint = updateAndSearchLoadCounter(axis, oplist);
+			metricPerPoint = updateAndSearchLoadCounter(oplist);
 		}
 		
 		int total = 0;
