@@ -131,7 +131,11 @@ public class Utilities {
 	}
 	
 	private static double nextGaussian(double deviation, double mean, Random rnd) {
-		return rnd.nextGaussian()*deviation+mean;
+		double val;
+		do {
+			val = rnd.nextGaussian()*deviation+mean;
+		} while (val < 0 || val > 1);
+		return val;
 	}
 	
 	private static double nextVal(String dist, Map<String, Double> distParams, Random rnd) {

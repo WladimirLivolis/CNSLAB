@@ -179,6 +179,7 @@ public class HeuristicV3 {
 
 	}
 	
+	/* Converts an operation into observations that are input to the Greenwald-Khanna algorithm */
 	public void insertGK(Operation op) {
 		
 		ArrayList<Double> values = new ArrayList<Double>();
@@ -197,7 +198,10 @@ public class HeuristicV3 {
 	
 	}
 	
-	public void updateQuantiles() {
+	/* Finds quantiles by using the Greenwald-Khanna algorithm */
+	public Map<Double, Double> findQuantiles() {
+		
+		Map<Double, Double> quant_list = new TreeMap<Double, Double>();
 		
 		int n_regions = (int) Math.sqrt(num_machines);
 		
@@ -212,16 +216,23 @@ public class HeuristicV3 {
 
 			double q = quantile.get(pos);
 			
-			quantiles.put(phi, q);
+			quant_list.put(phi, q);
 			
 		}
 		
+		return quant_list;
+		
 	}
 	
+	/* Returns the previously found quantiles */
 	public Map<Double, Double> getQuantiles() {
 		return Collections.unmodifiableMap(quantiles);
 	}
 	
+	/* Splits region into *square root of n* MEE (mutually exclusive and exhaustive) regions, where n = number of machines.
+	 * 
+	 * Given update & search loads or touches, we find the quantile points regarding only one attribute axis by using the Greenwald-Khanna algorithm.
+	 * Then, we split the existing region at its *square root of n* - 1 quantile points, generating *square root of n* new regions. */
 	public List<Region> partitionGK() {
 				
 		List<Region> newRegions = new ArrayList<Region>();
@@ -230,7 +241,7 @@ public class HeuristicV3 {
 		
 		double low = 0, high = 1;
 		
-		updateQuantiles();
+		quantiles = findQuantiles();
 		
 		try {
 

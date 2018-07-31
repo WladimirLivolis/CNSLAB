@@ -112,8 +112,11 @@ public class Main {
 		Queue<Operation> oplist = Utilities.readOperationsFile("./samples/training_sample.json");
 		System.out.println("["+LocalTime.now()+"] Done!");
 		
+		Queue<Operation> op_window = new LinkedList<Operation>();
+		
 		for (Operation op : oplist) {
 			heuristic3.insertGK(op);
+			op_window.add(op);
 		}
 		
 		// Partitions region
@@ -126,7 +129,7 @@ public class Main {
 		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 3...");
 		List<Region> regions3 = heuristic3.partitionGK();
 		System.out.println("["+LocalTime.now()+"] Done!");
-		
+				
 		/* TESTING HEURISTICS */
 		
 		// Reading operations from testing sample
@@ -134,34 +137,51 @@ public class Main {
 		oplist = Utilities.readOperationsFile("./samples/testing_sample.json");
 		System.out.println("["+LocalTime.now()+"] Done!");
 		
-		Map<Double, Double> old_quantiles = new TreeMap<Double, Double>();
-		for (Map.Entry<Double, Double> entry : heuristic3.getQuantiles().entrySet()) {
-			old_quantiles.put(entry.getKey(), entry.getValue());
-		}
-		
 		Queue<Operation> suboplist = new LinkedList<Operation>();
 		int count = 0;
 		while (!oplist.isEmpty()) {
 			
 			if(count != 0 && count % period == 0) {
-				
-				System.out.println("["+LocalTime.now()+"] Checking whether heuristic 3 quantiles are still valid...");
-				
-				heuristic3.updateQuantiles();
-				
-				Map<Double, Double> new_quantiles = new TreeMap<Double, Double>();
-				for (Map.Entry<Double, Double> entry : heuristic3.getQuantiles().entrySet()) {
-					new_quantiles.put(entry.getKey(), entry.getValue());
-				}
+
+				System.out.println("["+LocalTime.now()+"] Checking whether heuristic 2 quantiles are still valid...");
+				Map<Double, Double> old_quantiles_h2 = heuristic2.getQuantiles();
+				Map<Double, Double> new_quantiles_h2 = heuristic2.findQuantiles(op_window);
 				
 				boolean must_repartition = false;
-				for (Map.Entry<Double, Double> entry : old_quantiles.entrySet()) {
+				for (Map.Entry<Double, Double> entry : old_quantiles_h2.entrySet()) {
 					double phi = entry.getKey();
 					double old_quant = entry.getValue();
-					double new_quant = new_quantiles.get(phi);
+					double new_quant = new_quantiles_h2.get(phi);
 					
 					double diff = Math.abs(new_quant - old_quant)/old_quant;
-					if ( diff >= 0.1 ) {
+					if ( diff >= 0.05 ) {
+						must_repartition = true;
+						System.out.println("Must repartition!");
+						break;
+					}
+				}
+				
+				if (must_repartition) {
+					System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 2...");
+					regions2 = heuristic2.partition(op_window);
+					old_quantiles_h2 = new_quantiles_h2;
+				} else {
+					System.out.println("No need to repartition :)");
+				}
+				System.out.println("["+LocalTime.now()+"] Done!");
+				
+				System.out.println("["+LocalTime.now()+"] Checking whether heuristic 3 quantiles are still valid...");
+				Map<Double, Double> old_quantiles_h3 = heuristic3.getQuantiles();
+				Map<Double, Double> new_quantiles_h3 = heuristic3.findQuantiles();
+				
+				must_repartition = false;
+				for (Map.Entry<Double, Double> entry : old_quantiles_h3.entrySet()) {
+					double phi = entry.getKey();
+					double old_quant = entry.getValue();
+					double new_quant = new_quantiles_h3.get(phi);
+					
+					double diff = Math.abs(new_quant - old_quant)/old_quant;
+					if ( diff >= 0.05 ) {
 						must_repartition = true;
 						System.out.println("Must repartition!");
 						break;
@@ -171,11 +191,10 @@ public class Main {
 				if (must_repartition) {
 					System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 3...");
 					regions3 = heuristic3.partitionGK();
-					old_quantiles = new_quantiles;
+					old_quantiles_h3 = new_quantiles_h3;
 				} else {
 					System.out.println("No need to repartition :)");
 				}
-				
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Calculating metric distribution per region...");
@@ -192,6 +211,9 @@ public class Main {
 				Operation op = oplist.poll();
 				heuristic3.insertGK(op);
 				suboplist.add(op);
+				
+				op_window.poll();
+				op_window.add(op);
 				
 				count++;
 				
