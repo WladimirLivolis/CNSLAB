@@ -44,6 +44,9 @@ public class HeuristicV1 {
 	 * the JFI.*/
 	public List<Region> partition(Queue<Operation> oplist) {
 		
+		// to enforce regions is clean
+		regions = Utilities.buildNewRegions(regions.get(0).getPairs().size());
+		
 		double n = (double) num_machines;
 		int num_iterations = ((int)Math.sqrt(n)) - 1;
 		int count = 1;
