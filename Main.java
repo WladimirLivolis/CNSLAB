@@ -101,7 +101,7 @@ public class Main {
 		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample.json", new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
 								
-//		HeuristicV1 heuristic1 = new HeuristicV1(num_attr, num_mach);
+		HeuristicV1 heuristic1 = new HeuristicV1(num_attr, num_mach);
 		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
 		HeuristicV3 heuristic3 = new HeuristicV3(num_attr, num_mach, axis, metric, window_size, e);
 		
@@ -120,16 +120,16 @@ public class Main {
 		}
 		
 		// Partitions region
-//		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 1...");
-//		List<Region> regions1 = heuristic1.partition(oplist);
-//		System.out.println("["+LocalTime.now()+"] Done!");
+		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 1...");
+		List<Region> regions1 = heuristic1.partition(oplist);
+		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 2...");
 		List<Region> regions2 = heuristic2.partition(oplist);
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 3...");
 		List<Region> regions3 = heuristic3.partitionGK();
 		System.out.println("["+LocalTime.now()+"] Done!");
-				
+		
 		/* TESTING HEURISTICS */
 		
 		// Reading operations from testing sample
@@ -137,24 +137,45 @@ public class Main {
 		oplist = Utilities.readOperationsFile("./samples/testing_sample.json");
 		System.out.println("["+LocalTime.now()+"] Done!");
 		
+		// Calculates JFI
+		double old_jfi_h1 = Utilities.JFI(metric, oplist, regions1);
+		
 		Queue<Operation> suboplist = new LinkedList<Operation>();
 		int count = 0;
+		double threshold = 0.05;
 		while (!oplist.isEmpty()) {
 			
 			if(count != 0 && count % period == 0) {
 
+				System.out.println("["+LocalTime.now()+"] Checking whether heuristic 1 partitioning is still valid...");
+				double new_jfi_h1 = Utilities.JFI(metric, op_window, regions1);
+				
+				double diff = Math.abs(new_jfi_h1 - old_jfi_h1)/old_jfi_h1;
+				
+				boolean must_repartition = ( diff >= threshold );
+				
+				if (must_repartition) {
+					System.out.println("Must repartition!");
+					System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 1...");
+					regions1 = heuristic1.partition(op_window);
+					old_jfi_h1 = new_jfi_h1;
+				} else {
+					System.out.println("No need to repartition :)");
+				}
+				System.out.println("["+LocalTime.now()+"] Done!");
+				
 				System.out.println("["+LocalTime.now()+"] Checking whether heuristic 2 quantiles are still valid...");
 				Map<Double, Double> old_quantiles_h2 = heuristic2.getQuantiles();
 				Map<Double, Double> new_quantiles_h2 = heuristic2.findQuantiles(op_window);
 				
-				boolean must_repartition = false;
+				must_repartition = false;
 				for (Map.Entry<Double, Double> entry : old_quantiles_h2.entrySet()) {
 					double phi = entry.getKey();
 					double old_quant = entry.getValue();
 					double new_quant = new_quantiles_h2.get(phi);
 					
-					double diff = Math.abs(new_quant - old_quant)/old_quant;
-					if ( diff >= 0.05 ) {
+					diff = Math.abs(new_quant - old_quant)/old_quant;
+					if ( diff >= threshold ) {
 						must_repartition = true;
 						System.out.println("Must repartition!");
 						break;
@@ -180,8 +201,8 @@ public class Main {
 					double old_quant = entry.getValue();
 					double new_quant = new_quantiles_h3.get(phi);
 					
-					double diff = Math.abs(new_quant - old_quant)/old_quant;
-					if ( diff >= 0.05 ) {
+					diff = Math.abs(new_quant - old_quant)/old_quant;
+					if ( diff >= threshold ) {
 						must_repartition = true;
 						System.out.println("Must repartition!");
 						break;
@@ -198,7 +219,7 @@ public class Main {
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Calculating metric distribution per region...");
-//				metricDistributionPerRegion(suboplist, regions1, metric, "./heuristic1/heuristic1_dist_"+LocalTime.now()+".txt");
+				metricDistributionPerRegion(suboplist, regions1, metric, "./heuristic1/heuristic1_dist_"+LocalTime.now()+".txt");
 				metricDistributionPerRegion(suboplist, regions2, metric, "./heuristic2/heuristic2_dist_"+LocalTime.now()+".txt");
 				metricDistributionPerRegion(suboplist, regions3, metric, "./heuristic3/heuristic3_dist_"+LocalTime.now()+".txt");
 				System.out.println("["+LocalTime.now()+"] Done!");
