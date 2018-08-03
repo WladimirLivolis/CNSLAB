@@ -180,7 +180,7 @@ public class HeuristicV3 {
 	}
 	
 	/* Converts an operation into observations that are input to the Greenwald-Khanna algorithm */
-	public void insertGK(Operation op) {
+	public boolean insertGK(Operation op) {
 		
 		ArrayList<Double> values = new ArrayList<Double>();
 		
@@ -190,11 +190,14 @@ public class HeuristicV3 {
 			values = convertLoadSampleToGKInput(op);
 		}
 		
+		boolean flag = false;
+		
 		for (double val : values) {
-			GKWindow.greenwald_khanna_window(n, val, w, e, blist);
-			n++;
+			boolean window_moved = GKWindow.greenwald_khanna_window(n++, val, w, e, blist);
+			if (window_moved) { flag = true; }
 		}
 		
+		return flag;
 	
 	}
 	

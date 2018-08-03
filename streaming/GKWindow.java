@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 public class GKWindow {
 
-	public static void greenwald_khanna_window(int n, double v, int w, double e, ArrayList<Block> blockList) {
+	public static boolean greenwald_khanna_window(int n, double v, int w, double e, ArrayList<Block> blockList) {
 
 		// calculates window start & end positions
 		int w_min, w_max = n;
@@ -21,9 +21,12 @@ public class GKWindow {
 			blockList.add(new Block(n));
 		}
 
+		boolean flag = false;
+		
 		// checks whether its time to remove the oldest block
 		if (blockList.get(0).bstart() < w_min) {
 			blockList.remove(0);
+			flag = true;
 		}
 
 		Block under_construction = blockList.get(blockList.size()-1);
@@ -31,6 +34,8 @@ public class GKWindow {
 		GK.greenwald_khanna(under_construction.numObs(), v, under_construction.summary(), e/2);
 
 		under_construction.incrNumObs();
+		
+		return flag;
 
 	}
 

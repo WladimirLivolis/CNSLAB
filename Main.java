@@ -57,7 +57,7 @@ public class Main {
 		int num_max_guids = 500;		
 		int update_sample_size = 524288; // 2^19
 		int search_sample_size = 524288; // 2^19
-		int window_size = 67108864; // 2^27
+		int window_size = 67108864; // 2^26
 		
 		String axis = "A1";
 		String dist = "uniform";
@@ -114,8 +114,12 @@ public class Main {
 		
 		Queue<Operation> op_window = new LinkedList<Operation>();
 		
+		boolean flag = false;
+		
 		for (Operation op : oplist) {
-			heuristic3.insertGK(op);
+			boolean window_moved = heuristic3.insertGK(op);
+			if (window_moved) { flag = true; }
+			if (flag) { op_window.poll(); }
 			op_window.add(op);
 		}
 		
