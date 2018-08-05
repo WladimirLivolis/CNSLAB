@@ -1,6 +1,7 @@
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -11,7 +12,7 @@ import java.util.TreeMap;
 
 public class Main {
 	
-	private static void metricDistributionPerRegion(Queue<Operation> oplist, List<Region> regions, String metric, String fileName) {
+	private static void metricDistributionPerRegion(Queue<Operation> oplist, List<Region> regions, String metric, String fileName, ArrayList<Double> jfiList) {
 		
 		double jfi = Utilities.JFI(metric, oplist, regions);
 		
@@ -41,6 +42,7 @@ public class Main {
 			
 			pw.println();
 			pw.print("JFI: "+jfi);
+			jfiList.add(jfi);
 			
 		} catch (FileNotFoundException err) { 
 			err.printStackTrace(); 
@@ -55,9 +57,9 @@ public class Main {
 		int num_attr = 3;
 		int num_mach = 64;
 		int num_max_guids = 500;		
-		int update_sample_size = 524288; // 2^19
-		int search_sample_size = 524288; // 2^19
-		int window_size = 67108864; // 2^26
+		int update_sample_size = 524288; // 2^19 operations
+		int search_sample_size = 524288; // 2^19 operations
+		int window_size = 67108864; // 2^26 observations
 		
 		String axis = "A1";
 		String dist = "uniform";
@@ -87,7 +89,6 @@ public class Main {
 		}
 		
 		double e = 1/64d;
-		int period = 65536; // 2^16
 
 		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
 		
@@ -101,7 +102,6 @@ public class Main {
 		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample.json", new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
 								
-		HeuristicV1 heuristic1 = new HeuristicV1(num_attr, num_mach);
 		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
 		HeuristicV3 heuristic3 = new HeuristicV3(num_attr, num_mach, axis, metric, window_size, e);
 		
@@ -123,10 +123,10 @@ public class Main {
 			op_window.add(op);
 		}
 		
+		System.out.println("No. of observations seen so far: "+heuristic3.numberOfObservationsSeenSoFar()+" observations");
+		System.out.println("Size of operations window: "+op_window.size()+" operations");
+		
 		// Partitions region
-		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 1...");
-		List<Region> regions1 = heuristic1.partition(oplist);
-		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 2...");
 		List<Region> regions2 = heuristic2.partition(oplist);
 		System.out.println("["+LocalTime.now()+"] Done!");
@@ -141,44 +141,29 @@ public class Main {
 		oplist = Utilities.readOperationsFile("./samples/testing_sample.json");
 		System.out.println("["+LocalTime.now()+"] Done!");
 		
-		// Calculates JFI
-		double old_jfi_h1 = Utilities.JFI(metric, oplist, regions1);
+		ArrayList<Double> jfi_list_h2 = new ArrayList<Double>();
+		ArrayList<Double> jfi_list_h3 = new ArrayList<Double>();
 		
 		Queue<Operation> suboplist = new LinkedList<Operation>();
-		int count = 0;
-		double threshold = 0.05;
+		boolean window_moved = false;
+		double threshold = 0;
 		while (!oplist.isEmpty()) {
 			
-			if(count != 0 && count % period == 0) {
-
-				System.out.println("["+LocalTime.now()+"] Checking whether heuristic 1 partitioning is still valid...");
-				double new_jfi_h1 = Utilities.JFI(metric, op_window, regions1);
+			if(window_moved) {
 				
-				double diff = Math.abs(new_jfi_h1 - old_jfi_h1)/old_jfi_h1;
-				
-				boolean must_repartition = ( diff >= threshold );
-				
-				if (must_repartition) {
-					System.out.println("Must repartition!");
-					System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 1...");
-					regions1 = heuristic1.partition(op_window);
-					old_jfi_h1 = new_jfi_h1;
-				} else {
-					System.out.println("No need to repartition :)");
-				}
-				System.out.println("["+LocalTime.now()+"] Done!");
+				System.out.println("No. of new operations since last window movement: "+suboplist.size()+" operations");
 				
 				System.out.println("["+LocalTime.now()+"] Checking whether heuristic 2 quantiles are still valid...");
 				Map<Double, Double> old_quantiles_h2 = heuristic2.getQuantiles();
 				Map<Double, Double> new_quantiles_h2 = heuristic2.findQuantiles(op_window);
 				
-				must_repartition = false;
+				boolean must_repartition = false;
 				for (Map.Entry<Double, Double> entry : old_quantiles_h2.entrySet()) {
 					double phi = entry.getKey();
 					double old_quant = entry.getValue();
 					double new_quant = new_quantiles_h2.get(phi);
 					
-					diff = Math.abs(new_quant - old_quant)/old_quant;
+					double diff = Math.abs(new_quant - old_quant)/old_quant;
 					if ( diff >= threshold ) {
 						must_repartition = true;
 						System.out.println("Must repartition!");
@@ -205,7 +190,7 @@ public class Main {
 					double old_quant = entry.getValue();
 					double new_quant = new_quantiles_h3.get(phi);
 					
-					diff = Math.abs(new_quant - old_quant)/old_quant;
+					double diff = Math.abs(new_quant - old_quant)/old_quant;
 					if ( diff >= threshold ) {
 						must_repartition = true;
 						System.out.println("Must repartition!");
@@ -223,27 +208,49 @@ public class Main {
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Calculating metric distribution per region...");
-				metricDistributionPerRegion(suboplist, regions1, metric, "./heuristic1/heuristic1_dist_"+LocalTime.now()+".txt");
-				metricDistributionPerRegion(suboplist, regions2, metric, "./heuristic2/heuristic2_dist_"+LocalTime.now()+".txt");
-				metricDistributionPerRegion(suboplist, regions3, metric, "./heuristic3/heuristic3_dist_"+LocalTime.now()+".txt");
+				metricDistributionPerRegion(suboplist, regions2, metric, "./heuristic2/heuristic2_dist_"+LocalTime.now()+".txt", jfi_list_h2);
+				metricDistributionPerRegion(suboplist, regions3, metric, "./heuristic3/heuristic3_dist_"+LocalTime.now()+".txt", jfi_list_h3);
 				System.out.println("["+LocalTime.now()+"] Done!");
 
-				count = 0;
 				suboplist = new LinkedList<Operation>();
+				window_moved = false;
 				
 			} else {
 				
 				Operation op = oplist.poll();
-				heuristic3.insertGK(op);
+				
+				window_moved = heuristic3.insertGK(op);
+				
 				suboplist.add(op);
 				
 				op_window.poll();
 				op_window.add(op);
-				
-				count++;
-				
+								
 			}
 			
+		}
+		
+		// Writes log file with jfi data for both heuristics 2 & 3
+		PrintWriter pw2 = null, pw3 = null;
+		
+		try {
+			
+			pw2 = new PrintWriter("heuristic2_jfi_"+LocalTime.now()+".txt");
+			pw3 = new PrintWriter("heuristic3_jfi_"+LocalTime.now()+".txt");
+			
+			for (double jfi : jfi_list_h2) {
+				pw2.println((jfi_list_h2.indexOf(jfi)+1)+"\t"+jfi);
+			}
+			for (double jfi : jfi_list_h3) {
+				pw3.println((jfi_list_h3.indexOf(jfi)+1)+"\t"+jfi);
+			}
+			
+			
+		} catch (FileNotFoundException err) {
+			err.printStackTrace();
+		} finally {
+			pw2.close();
+			pw3.close();
 		}
 
 	}
