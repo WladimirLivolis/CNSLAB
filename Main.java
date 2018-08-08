@@ -103,7 +103,9 @@ public class Main {
 		System.out.println("["+LocalTime.now()+"] Done!");
 								
 		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
+		HeuristicV2 heuristic2_oracle = new HeuristicV2(num_attr, num_mach, axis, metric);
 		HeuristicV3 heuristic3 = new HeuristicV3(num_attr, num_mach, axis, metric, window_size, e);
+		HeuristicV3 heuristic3_oracle = new HeuristicV3(num_attr, num_mach, axis, metric, window_size, e);
 		
 		/* TRAINING HEURISTICS */
 		
@@ -118,12 +120,14 @@ public class Main {
 		
 		for (Operation op : oplist) {
 			boolean window_moved = heuristic3.insertGK(op);
+			heuristic3_oracle.insertGK(op);
 			if (window_moved) { flag = true; }
 			if (flag) { op_window.poll(); }
 			op_window.add(op);
 		}
 		
-		System.out.println("No. of observations seen so far: "+heuristic3.numberOfObservationsSeenSoFar()+" observations");
+		int numberOfObservationsSeenSoFar = heuristic3.numberOfObservationsSeenSoFar();
+		System.out.println("No. of observations seen so far: "+numberOfObservationsSeenSoFar+" observations");
 		System.out.println("Size of operations window: "+op_window.size()+" operations");
 		
 		// Partitions region
@@ -132,6 +136,12 @@ public class Main {
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 3...");
 		List<Region> regions3 = heuristic3.partitionGK();
+		System.out.println("["+LocalTime.now()+"] Done!");
+		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 2 Oracle...");
+		List<Region> regions2_oracle = heuristic2_oracle.partition(oplist);
+		System.out.println("["+LocalTime.now()+"] Done!");
+		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 3 Oracle...");
+		List<Region> regions3_oracle = heuristic3_oracle.partitionGK();
 		System.out.println("["+LocalTime.now()+"] Done!");
 		
 		/* TESTING HEURISTICS */
@@ -143,73 +153,43 @@ public class Main {
 		
 		ArrayList<Double> jfi_list_h2 = new ArrayList<Double>();
 		ArrayList<Double> jfi_list_h3 = new ArrayList<Double>();
+		ArrayList<Double> jfi_list_h2_oracle = new ArrayList<Double>();
+		ArrayList<Double> jfi_list_h3_oracle = new ArrayList<Double>();
 		
 		Queue<Operation> suboplist = new LinkedList<Operation>();
 		boolean window_moved = false;
-		double threshold = 0;
 		while (!oplist.isEmpty()) {
 			
 			if(window_moved) {
 				
 				System.out.println("No. of new operations since last window movement: "+suboplist.size()+" operations");
-				
-				System.out.println("["+LocalTime.now()+"] Checking whether heuristic 2 quantiles are still valid...");
-				Map<Double, Double> old_quantiles_h2 = heuristic2.getQuantiles();
-				Map<Double, Double> new_quantiles_h2 = heuristic2.findQuantiles(op_window);
-				
-				boolean must_repartition = false;
-				for (Map.Entry<Double, Double> entry : old_quantiles_h2.entrySet()) {
-					double phi = entry.getKey();
-					double old_quant = entry.getValue();
-					double new_quant = new_quantiles_h2.get(phi);
-					
-					double diff = Math.abs(new_quant - old_quant)/old_quant;
-					if ( diff >= threshold ) {
-						must_repartition = true;
-						System.out.println("Must repartition!");
-						break;
-					}
-				}
-				
-				if (must_repartition) {
-					System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 2...");
-					regions2 = heuristic2.partition(op_window);
-					old_quantiles_h2 = new_quantiles_h2;
-				} else {
-					System.out.println("No need to repartition :)");
-				}
-				System.out.println("["+LocalTime.now()+"] Done!");
-				
-				System.out.println("["+LocalTime.now()+"] Checking whether heuristic 3 quantiles are still valid...");
-				Map<Double, Double> old_quantiles_h3 = heuristic3.getQuantiles();
-				Map<Double, Double> new_quantiles_h3 = heuristic3.findQuantiles();
-				
-				must_repartition = false;
-				for (Map.Entry<Double, Double> entry : old_quantiles_h3.entrySet()) {
-					double phi = entry.getKey();
-					double old_quant = entry.getValue();
-					double new_quant = new_quantiles_h3.get(phi);
-					
-					double diff = Math.abs(new_quant - old_quant)/old_quant;
-					if ( diff >= threshold ) {
-						must_repartition = true;
-						System.out.println("Must repartition!");
-						break;
-					}
-				}
-				
-				if (must_repartition) {
-					System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 3...");
-					regions3 = heuristic3.partitionGK();
-					old_quantiles_h3 = new_quantiles_h3;
-				} else {
-					System.out.println("No need to repartition :)");
-				}
-				System.out.println("["+LocalTime.now()+"] Done!");
+				System.out.println("No. of observations since last window movement: "+(heuristic3.numberOfObservationsSeenSoFar()-numberOfObservationsSeenSoFar)+" observations");
+				numberOfObservationsSeenSoFar = heuristic3.numberOfObservationsSeenSoFar();
 				
 				System.out.println("["+LocalTime.now()+"] Calculating metric distribution per region...");
 				metricDistributionPerRegion(suboplist, regions2, metric, "./heuristic2/heuristic2_dist_"+LocalTime.now()+".txt", jfi_list_h2);
 				metricDistributionPerRegion(suboplist, regions3, metric, "./heuristic3/heuristic3_dist_"+LocalTime.now()+".txt", jfi_list_h3);
+				System.out.println("["+LocalTime.now()+"] Done!");
+				
+				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 2...");
+				regions2 = heuristic2.partition(op_window);
+				System.out.println("["+LocalTime.now()+"] Done!");
+							
+				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 3...");
+				regions3 = heuristic3.partitionGK();
+				System.out.println("["+LocalTime.now()+"] Done!");
+				
+				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 2 Oracle...");
+				regions2_oracle = heuristic2_oracle.partition(op_window);
+				System.out.println("["+LocalTime.now()+"] Done!");
+				
+				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 3 Oracle...");
+				regions3_oracle = heuristic3_oracle.partitionGK();
+				System.out.println("["+LocalTime.now()+"] Done!");
+				
+				System.out.println("["+LocalTime.now()+"] Oracle: Calculating metric distribution per region...");
+				metricDistributionPerRegion(suboplist, regions2_oracle, metric, "./heuristic2_oracle/heuristic2_oracle_dist_"+LocalTime.now()+".txt", jfi_list_h2_oracle);
+				metricDistributionPerRegion(suboplist, regions3_oracle, metric, "./heuristic3_oracle/heuristic3_oracle_dist_"+LocalTime.now()+".txt", jfi_list_h3_oracle);
 				System.out.println("["+LocalTime.now()+"] Done!");
 
 				suboplist = new LinkedList<Operation>();
@@ -220,6 +200,7 @@ public class Main {
 				Operation op = oplist.poll();
 				
 				window_moved = heuristic3.insertGK(op);
+				heuristic3_oracle.insertGK(op);
 				
 				suboplist.add(op);
 				
@@ -231,18 +212,26 @@ public class Main {
 		}
 		
 		// Writes log file with jfi data for both heuristics 2 & 3
-		PrintWriter pw2 = null, pw3 = null;
+		PrintWriter pw2 = null, pw3 = null, pw2_oracle = null, pw3_oracle = null;
 		
 		try {
 			
 			pw2 = new PrintWriter("heuristic2_jfi_"+LocalTime.now()+".txt");
 			pw3 = new PrintWriter("heuristic3_jfi_"+LocalTime.now()+".txt");
+			pw2_oracle = new PrintWriter("heuristic2_oracle_jfi_"+LocalTime.now()+".txt");
+			pw3_oracle = new PrintWriter("heuristic3_oracle_jfi_"+LocalTime.now()+".txt");
 			
 			for (double jfi : jfi_list_h2) {
 				pw2.println((jfi_list_h2.indexOf(jfi)+1)+"\t"+jfi);
 			}
 			for (double jfi : jfi_list_h3) {
 				pw3.println((jfi_list_h3.indexOf(jfi)+1)+"\t"+jfi);
+			}
+			for (double jfi : jfi_list_h2_oracle) {
+				pw2_oracle.println((jfi_list_h2_oracle.indexOf(jfi)+1)+"\t"+jfi);
+			}
+			for (double jfi : jfi_list_h3_oracle) {
+				pw3_oracle.println((jfi_list_h3_oracle.indexOf(jfi)+1)+"\t"+jfi);
 			}
 			
 			
@@ -251,6 +240,8 @@ public class Main {
 		} finally {
 			pw2.close();
 			pw3.close();
+			pw2_oracle.close();
+			pw3_oracle.close();
 		}
 
 	}
