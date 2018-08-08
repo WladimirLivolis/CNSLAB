@@ -103,9 +103,7 @@ public class Main {
 		System.out.println("["+LocalTime.now()+"] Done!");
 								
 		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
-		HeuristicV2 heuristic2_oracle = new HeuristicV2(num_attr, num_mach, axis, metric);
 		HeuristicV3 heuristic3 = new HeuristicV3(num_attr, num_mach, axis, metric, window_size, e);
-		HeuristicV3 heuristic3_oracle = new HeuristicV3(num_attr, num_mach, axis, metric, window_size, e);
 		
 		/* TRAINING HEURISTICS */
 		
@@ -120,7 +118,6 @@ public class Main {
 		
 		for (Operation op : oplist) {
 			boolean window_moved = heuristic3.insertGK(op);
-			heuristic3_oracle.insertGK(op);
 			if (window_moved) { flag = true; }
 			if (flag) { op_window.poll(); }
 			op_window.add(op);
@@ -137,12 +134,6 @@ public class Main {
 		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 3...");
 		List<Region> regions3 = heuristic3.partitionGK();
 		System.out.println("["+LocalTime.now()+"] Done!");
-		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 2 Oracle...");
-		List<Region> regions2_oracle = heuristic2_oracle.partition(oplist);
-		System.out.println("["+LocalTime.now()+"] Done!");
-		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 3 Oracle...");
-		List<Region> regions3_oracle = heuristic3_oracle.partitionGK();
-		System.out.println("["+LocalTime.now()+"] Done!");
 		
 		/* TESTING HEURISTICS */
 		
@@ -153,8 +144,6 @@ public class Main {
 		
 		ArrayList<Double> jfi_list_h2 = new ArrayList<Double>();
 		ArrayList<Double> jfi_list_h3 = new ArrayList<Double>();
-		ArrayList<Double> jfi_list_h2_oracle = new ArrayList<Double>();
-		ArrayList<Double> jfi_list_h3_oracle = new ArrayList<Double>();
 		
 		Queue<Operation> suboplist = new LinkedList<Operation>();
 		boolean window_moved = false;
@@ -178,19 +167,6 @@ public class Main {
 				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 3...");
 				regions3 = heuristic3.partitionGK();
 				System.out.println("["+LocalTime.now()+"] Done!");
-				
-				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 2 Oracle...");
-				regions2_oracle = heuristic2_oracle.partition(op_window);
-				System.out.println("["+LocalTime.now()+"] Done!");
-				
-				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 3 Oracle...");
-				regions3_oracle = heuristic3_oracle.partitionGK();
-				System.out.println("["+LocalTime.now()+"] Done!");
-				
-				System.out.println("["+LocalTime.now()+"] Oracle: Calculating metric distribution per region...");
-				metricDistributionPerRegion(suboplist, regions2_oracle, metric, "./heuristic2_oracle/heuristic2_oracle_dist_"+LocalTime.now()+".txt", jfi_list_h2_oracle);
-				metricDistributionPerRegion(suboplist, regions3_oracle, metric, "./heuristic3_oracle/heuristic3_oracle_dist_"+LocalTime.now()+".txt", jfi_list_h3_oracle);
-				System.out.println("["+LocalTime.now()+"] Done!");
 
 				suboplist = new LinkedList<Operation>();
 				window_moved = false;
@@ -200,7 +176,6 @@ public class Main {
 				Operation op = oplist.poll();
 				
 				window_moved = heuristic3.insertGK(op);
-				heuristic3_oracle.insertGK(op);
 				
 				suboplist.add(op);
 				
@@ -212,26 +187,18 @@ public class Main {
 		}
 		
 		// Writes log file with jfi data for both heuristics 2 & 3
-		PrintWriter pw2 = null, pw3 = null, pw2_oracle = null, pw3_oracle = null;
+		PrintWriter pw2 = null, pw3 = null;
 		
 		try {
 			
 			pw2 = new PrintWriter("heuristic2_jfi_"+LocalTime.now()+".txt");
 			pw3 = new PrintWriter("heuristic3_jfi_"+LocalTime.now()+".txt");
-			pw2_oracle = new PrintWriter("heuristic2_oracle_jfi_"+LocalTime.now()+".txt");
-			pw3_oracle = new PrintWriter("heuristic3_oracle_jfi_"+LocalTime.now()+".txt");
 			
 			for (double jfi : jfi_list_h2) {
 				pw2.println((jfi_list_h2.indexOf(jfi)+1)+"\t"+jfi);
 			}
 			for (double jfi : jfi_list_h3) {
 				pw3.println((jfi_list_h3.indexOf(jfi)+1)+"\t"+jfi);
-			}
-			for (double jfi : jfi_list_h2_oracle) {
-				pw2_oracle.println((jfi_list_h2_oracle.indexOf(jfi)+1)+"\t"+jfi);
-			}
-			for (double jfi : jfi_list_h3_oracle) {
-				pw3_oracle.println((jfi_list_h3_oracle.indexOf(jfi)+1)+"\t"+jfi);
 			}
 			
 			
@@ -240,8 +207,6 @@ public class Main {
 		} finally {
 			pw2.close();
 			pw3.close();
-			pw2_oracle.close();
-			pw3_oracle.close();
 		}
 
 	}
