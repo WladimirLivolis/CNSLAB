@@ -52,6 +52,58 @@ public class Main {
 		
 	}
 	
+	private static void testHeuristicsAgainstNewOperations(String sampleFile, Queue<Operation> op_window, List<Region> regions2, List<Region> regions3, HeuristicV2 heuristic2, HeuristicV3 heuristic3, ArrayList<Double> jfi_list_h2, ArrayList<Double> jfi_list_h3, String metric) {
+		
+		// Reading operations from testing sample
+		System.out.println("["+LocalTime.now()+"] Reading testing sample file...");
+		Queue<Operation> oplist = Utilities.readOperationsFile(sampleFile);
+		System.out.println("["+LocalTime.now()+"] Done!");
+		
+		Queue<Operation> suboplist = new LinkedList<Operation>();
+		boolean window_moved = false;
+		int numberOfObservationsSeenSoFar = heuristic3.numberOfObservationsSeenSoFar();
+		
+		while (!oplist.isEmpty()) {
+			
+			if(window_moved) {
+				
+				System.out.println("No. of new operations since last window movement: "+suboplist.size()+" operations");
+				System.out.println("No. of observations since last window movement: "+(heuristic3.numberOfObservationsSeenSoFar()-numberOfObservationsSeenSoFar)+" observations");
+				numberOfObservationsSeenSoFar = heuristic3.numberOfObservationsSeenSoFar();
+				
+				System.out.println("["+LocalTime.now()+"] Calculating metric distribution per region...");
+				metricDistributionPerRegion(suboplist, regions2, metric, "./heuristic2/heuristic2_dist_"+LocalTime.now()+".txt", jfi_list_h2);
+				metricDistributionPerRegion(suboplist, regions3, metric, "./heuristic3/heuristic3_dist_"+LocalTime.now()+".txt", jfi_list_h3);
+				System.out.println("["+LocalTime.now()+"] Done!");
+				
+				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 2...");
+				regions2 = heuristic2.partition(op_window);
+				System.out.println("["+LocalTime.now()+"] Done!");
+							
+				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 3...");
+				regions3 = heuristic3.partitionGK();
+				System.out.println("["+LocalTime.now()+"] Done!");
+
+				suboplist = new LinkedList<Operation>();
+				window_moved = false;
+				
+			} else {
+				
+				Operation op = oplist.poll();
+				
+				window_moved = heuristic3.insertGK(op);
+				
+				suboplist.add(op);
+				
+				op_window.poll();
+				op_window.add(op);
+								
+			}
+			
+		}
+		
+	}
+	
 	public static void main(String[] args) {
 		
 		int num_attr = 3;
@@ -96,10 +148,25 @@ public class Main {
 		System.out.println("["+LocalTime.now()+"] Generating training sample...");
 		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/training_sample.json", new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
-		System.out.println("["+LocalTime.now()+"] Generating testing sample...");
-		distParams.put("low", 0.3);
-		distParams.put("high", 0.7);
-		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample.json", new Random());
+		System.out.println("["+LocalTime.now()+"] Generating testing sample 1: Uniform (0.0,0.4)...");
+		distParams.put("low", 0.0);
+		distParams.put("high", 0.4);
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample1.json", new Random());
+		System.out.println("["+LocalTime.now()+"] Done!");
+		System.out.println("["+LocalTime.now()+"] Generating testing sample 2: Uniform (0.2,0.6)...");
+		distParams.put("low", 0.2);
+		distParams.put("high", 0.6);
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample2.json", new Random());
+		System.out.println("["+LocalTime.now()+"] Done!");
+		System.out.println("["+LocalTime.now()+"] Generating testing sample 3: Uniform (0.4,0.8)...");
+		distParams.put("low", 0.2);
+		distParams.put("high", 0.6);
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample3.json", new Random());
+		System.out.println("["+LocalTime.now()+"] Done!");
+		System.out.println("["+LocalTime.now()+"] Generating testing sample 4: Uniform (0.6,1.0)...");
+		distParams.put("low", 0.6);
+		distParams.put("high", 1.0);
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample4.json", new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
 								
 		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
@@ -123,8 +190,7 @@ public class Main {
 			op_window.add(op);
 		}
 		
-		int numberOfObservationsSeenSoFar = heuristic3.numberOfObservationsSeenSoFar();
-		System.out.println("No. of observations seen so far: "+numberOfObservationsSeenSoFar+" observations");
+		System.out.println("No. of observations seen so far: "+heuristic3.numberOfObservationsSeenSoFar()+" observations");
 		System.out.println("Size of operations window: "+op_window.size()+" operations");
 		
 		// Partitions region
@@ -137,54 +203,13 @@ public class Main {
 		
 		/* TESTING HEURISTICS */
 		
-		// Reading operations from testing sample
-		System.out.println("["+LocalTime.now()+"] Reading testing sample file...");
-		oplist = Utilities.readOperationsFile("./samples/testing_sample.json");
-		System.out.println("["+LocalTime.now()+"] Done!");
-		
 		ArrayList<Double> jfi_list_h2 = new ArrayList<Double>();
 		ArrayList<Double> jfi_list_h3 = new ArrayList<Double>();
 		
-		Queue<Operation> suboplist = new LinkedList<Operation>();
-		boolean window_moved = false;
-		while (!oplist.isEmpty()) {
-			
-			if(window_moved) {
-				
-				System.out.println("No. of new operations since last window movement: "+suboplist.size()+" operations");
-				System.out.println("No. of observations since last window movement: "+(heuristic3.numberOfObservationsSeenSoFar()-numberOfObservationsSeenSoFar)+" observations");
-				numberOfObservationsSeenSoFar = heuristic3.numberOfObservationsSeenSoFar();
-				
-				System.out.println("["+LocalTime.now()+"] Calculating metric distribution per region...");
-				metricDistributionPerRegion(suboplist, regions2, metric, "./heuristic2/heuristic2_dist_"+LocalTime.now()+".txt", jfi_list_h2);
-				metricDistributionPerRegion(suboplist, regions3, metric, "./heuristic3/heuristic3_dist_"+LocalTime.now()+".txt", jfi_list_h3);
-				System.out.println("["+LocalTime.now()+"] Done!");
-				
-				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 2...");
-				regions2 = heuristic2.partition(op_window);
-				System.out.println("["+LocalTime.now()+"] Done!");
-							
-				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 3...");
-				regions3 = heuristic3.partitionGK();
-				System.out.println("["+LocalTime.now()+"] Done!");
-
-				suboplist = new LinkedList<Operation>();
-				window_moved = false;
-				
-			} else {
-				
-				Operation op = oplist.poll();
-				
-				window_moved = heuristic3.insertGK(op);
-				
-				suboplist.add(op);
-				
-				op_window.poll();
-				op_window.add(op);
-								
-			}
-			
-		}
+		testHeuristicsAgainstNewOperations("./samples/testing_sample1.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric);
+		testHeuristicsAgainstNewOperations("./samples/testing_sample2.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric);
+		testHeuristicsAgainstNewOperations("./samples/testing_sample3.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric);
+		testHeuristicsAgainstNewOperations("./samples/testing_sample4.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric);
 		
 		// Writes log file with jfi data for both heuristics 2 & 3
 		PrintWriter pw2 = null, pw3 = null;
