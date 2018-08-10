@@ -77,11 +77,13 @@ public class Main {
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 2...");
-				regions2 = heuristic2.partition(op_window);
+				regions2.clear(); // clear heuristic2 regions
+				regions2.addAll(heuristic2.partition(op_window)); // new partitions are added to heuristic2 regions
 				System.out.println("["+LocalTime.now()+"] Done!");
 							
 				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 3...");
-				regions3 = heuristic3.partitionGK();
+				regions3.clear(); // clear heuristic3 regions
+				regions3.addAll(heuristic3.partitionGK()); // new partitions are added to heuristic3 regions
 				System.out.println("["+LocalTime.now()+"] Done!");
 
 				suboplist = new LinkedList<Operation>();
