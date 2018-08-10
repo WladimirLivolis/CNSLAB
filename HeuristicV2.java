@@ -265,6 +265,11 @@ public class HeuristicV2 {
 		return Collections.unmodifiableMap(quantiles);
 	}
 	
+	/* Returns the previously created regions */
+	public List<Region> getRegions() {
+		return Collections.unmodifiableList(regions);
+	}
+	
 	/* Splits region into *square root of n* MEE (mutually exclusive and exhaustive) regions, where n = number of machines.
 	 * 
 	 * Given update & search loads or touches, we find the quantile points regarding only one attribute axis.
@@ -312,99 +317,13 @@ public class HeuristicV2 {
 				
 		regions = newRegions;
 		
-		System.out.println(toString());
+		System.out.println(printRegions());
 		
 		return Collections.unmodifiableList(regions);
 		
-		/*
-		
-		Map<Double, Integer> metricPerPoint;
-		
-		if (metric.toLowerCase().equals("touches")) {
-			metricPerPoint = updateAndSearchTouchesCounter(oplist);
-		} else {
-			metricPerPoint = updateAndSearchLoadCounter(oplist);
-		}
-		
-		int total = 0;
-		
-		// calculates either total number of touches or total load
-		for (int val : metricPerPoint.values()) { total += val; }
-		
-		Queue<Double> phi_list = new LinkedList<Double>();
-
-		int n_regions = (int) Math.sqrt(num_machines);
-
-		// phi = 'i/n_regions', with '1 <= i <= n_regions - 1'
-		for (int i = 1; i <= n_regions-1; i++) {
-			double phi = i/(double)n_regions;
-			phi_list.add(phi);		
-		}
-
-		List<Region> newRegions = new ArrayList<Region>();
-		
-		int count = 0, low_range = 0, max_range = 1, region_index = 1;
-		double previous_value = low_range;
-		
-		try {
-			
-			PrintWriter pw = new PrintWriter("./heuristic2/heuristic2_quant_"+LocalTime.now()+".txt");
-			pw.println("phi\tquantile");
-
-			for (double d : metricPerPoint.keySet()) { // iterate over the keys, which are the candidate points to be quantile
-
-				if (phi_list.isEmpty()) { // check whether all quantile points were already found
-
-					Region newRegion = new Region("R"+region_index++, regions.get(0).getPairs());
-
-					newRegion.setPair(axis, previous_value, max_range);
-
-					newRegions.add(newRegion);
-
-					break;
-				}
-
-				count += metricPerPoint.get(d);  // 'count' represents either accumulated amount of touches or load until point 'd'
-
-				double percentage = count/(double)total;
-
-				double phi = phi_list.peek();
-
-				if (percentage >= phi ) { // if either touches or load percentage until 'd' is greater than or equal to 'phi', 'd' is a quantile
-
-					phi_list.poll();
-
-					Region newRegion = new Region("R"+region_index++, regions.get(0).getPairs());
-
-					newRegion.setPair(axis, previous_value, d);
-
-					previous_value = d;
-
-					newRegions.add(newRegion);
-
-					System.out.println("Phi: "+phi+" | Quantile: "+d+" | Percentage: "+percentage);
-					pw.println(phi+"\t"+d);
-
-				}
-
-			}
-			
-			pw.close();
-		
-		} catch (Exception err) {
-			err.printStackTrace();
-		}
-		
-		regions = newRegions;
-		
-		System.out.println(toString());
-		
-		return Collections.unmodifiableList(regions);
-		
-		*/
 	}
 	
-	public String toString() {
+	public String printRegions() {
 		StringBuilder str = new StringBuilder("{ ");
 		for (Region region : regions) {
 			str.append(region.getName());

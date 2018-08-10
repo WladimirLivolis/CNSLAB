@@ -53,7 +53,7 @@ public class HeuristicV1 {
 				
 		for (int i = 1; i <= num_iterations; i++) {
 			
-			System.out.println(toString());
+			System.out.println(printRegions());
 			
 			Map<Double, List<Region>> possiblePartitions = new TreeMap<Double, List<Region>>();
 			
@@ -117,13 +117,18 @@ public class HeuristicV1 {
 
 		}
 		
-		System.out.println(toString());
+		System.out.println(printRegions());
 				
 		return Collections.unmodifiableList(regions);
 				
 	}
 	
-	public String toString() {
+	/* Returns the previously created regions */
+	public List<Region> getRegions() {
+		return Collections.unmodifiableList(regions);
+	}
+	
+	public String printRegions() {
 		StringBuilder str = new StringBuilder("{ ");
 		for (Region region : regions) {
 			str.append(region.getName());

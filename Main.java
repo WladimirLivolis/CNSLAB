@@ -197,10 +197,12 @@ public class Main {
 		
 		// Partitions region
 		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 2...");
-		List<Region> regions2 = heuristic2.partition(oplist);
+		List<Region> regions2 = new ArrayList<Region>();
+		regions2.addAll(heuristic2.partition(oplist));
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 3...");
-		List<Region> regions3 = heuristic3.partitionGK();
+		List<Region> regions3 = new ArrayList<Region>();
+		regions3.addAll(heuristic3.partitionGK());
 		System.out.println("["+LocalTime.now()+"] Done!");
 		
 		/* TESTING HEURISTICS */

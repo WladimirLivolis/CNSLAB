@@ -232,6 +232,11 @@ public class HeuristicV3 {
 		return Collections.unmodifiableMap(quantiles);
 	}
 	
+	/* Returns the previously created regions */
+	public List<Region> getRegions() {
+		return Collections.unmodifiableList(regions);
+	}
+	
 	/* Splits region into *square root of n* MEE (mutually exclusive and exhaustive) regions, where n = number of machines.
 	 * 
 	 * Given update & search loads or touches, we find the quantile points regarding only one attribute axis by using the Greenwald-Khanna algorithm.
@@ -279,13 +284,13 @@ public class HeuristicV3 {
 				
 		regions = newRegions;
 		
-		System.out.println(toString());
+		System.out.println(printRegions());
 		
 		return Collections.unmodifiableList(regions);
 		
 	}
 	
-	public String toString() {
+	public String printRegions() {
 		StringBuilder str = new StringBuilder("{ ");
 		for (Region region : regions) {
 			str.append(region.getName());
