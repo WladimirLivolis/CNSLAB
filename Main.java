@@ -161,8 +161,8 @@ public class Main {
 		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample2.json", new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Generating testing sample 3: Uniform (0.4,0.8)...");
-		distParams.put("low", 0.2);
-		distParams.put("high", 0.6);
+		distParams.put("low", 0.4);
+		distParams.put("high", 0.8);
 		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample3.json", new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Generating testing sample 4: Uniform (0.6,1.0)...");
