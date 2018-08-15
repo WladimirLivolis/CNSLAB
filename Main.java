@@ -301,11 +301,11 @@ public class Main {
 			pw_h2 = new PrintWriter("heuristic2_jfi_"+LocalTime.now()+".txt");
 			pw_h3 = new PrintWriter("heuristic3_jfi_"+LocalTime.now()+".txt");
 			
-			pw_h2.println("# region\tJFI");
+			pw_h2.println("# repartitions\tJFI");
 			for (double jfi : jfi_list_h2) {
 				pw_h2.println((jfi_list_h2.indexOf(jfi)+1)+"\t"+jfi);
 			}
-			pw_h3.println("# region\tJFI");
+			pw_h3.println("# repartitions\tJFI");
 			for (double jfi : jfi_list_h3) {
 				pw_h3.println((jfi_list_h3.indexOf(jfi)+1)+"\t"+jfi);
 			}
