@@ -837,35 +837,45 @@ public class Utilities {
 
 				for (Region r : regions) { // iterate over regions
 
-					// Checks whether this update is in this region regarding its attribute
-					boolean flag_attr = true;
+					// I) Checks whether this update is in this region regarding its attribute or its guid
+					boolean flag_attr = true, flag_guid = true;
 
 					for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
+						
+						boolean isGuid = attr.getKey().contains("'");
+						
+						String attrKey;
+						if (isGuid) { // it's a guid attribute
+							attrKey = attr.getKey().substring(0, attr.getKey().length()-1);
+						} else { // it's an update attribute
+							attrKey = attr.getKey();
+						}
 
-						String up_attr = attr.getKey();
-						double up_val  = attr.getValue();
+						double attrVal  = attr.getValue();
 
-						if (r.getPairs().containsKey(up_attr)) { // check the region's range for this attribute
+						if (r.getPairs().containsKey(attrKey)) { // check the region's range for this attribute
 
-							double region_low_range = r.getPairs().get(up_attr).getLow();
-							double region_high_range = r.getPairs().get(up_attr).getHigh();
+							double region_low_range = r.getPairs().get(attrKey).getLow();
+							double region_high_range = r.getPairs().get(attrKey).getHigh();
 
-							if (up_val < region_low_range || up_val >= region_high_range) { // check whether update value is inside this region range
-								flag_attr = false;
-								break;
+							if (attrVal < region_low_range || attrVal >= region_high_range) { // check whether attribute value is inside this region range
+								if (isGuid) {
+									flag_guid = false;
+								} else {
+									flag_attr = false;
+								}
 							}
 
 						}
 
 					}
 
-					if (flag_attr) {
+					if (flag_attr || flag_guid) {
 
 						int region_index = regions.indexOf(r)+1;
 						for (int machine = (int)((region_index-1)*Math.sqrt(num_machines))+1; machine <= (region_index*Math.sqrt(num_machines)); machine++) {
 							messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
 						}
-						break;
 
 					}
 
