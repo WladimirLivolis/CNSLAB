@@ -767,13 +767,13 @@ public class Utilities {
 				Update up = (Update)op;
 
 				double up_val = up.getAttributes().get(axis);
+				double guid_val = up.getAttributes().get(axis+"'");
 
 				for (int i = 1; i <= num_machines; i++) {
 
 					double low = (i-1)/(double)num_machines, high = i/(double)num_machines;
-					if (up_val >= low && up_val < high) {
+					if ((up_val >= low && up_val < high) || (guid_val >= low && guid_val < high)) {
 						messagesCounterPerMachine.put(i, messagesCounterPerMachine.get(i)+1);
-						break;
 					}
 
 				}
