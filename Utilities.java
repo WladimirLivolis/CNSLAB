@@ -714,5 +714,221 @@ public class Utilities {
 		}
 		
 	}
+	
+	/* Computes and returns the number of exchange messages between the controller and each machine when adopting replicate all strategy */
+	public static Map<Integer, Integer> messagesCounterReplicateAll(int num_machines, Queue<Operation> oplist) {
+
+		Map<Integer, Integer> messagesCounterPerMachine = new TreeMap<Integer, Integer>();
+
+		// initializes messages counter per machine
+		for (int i = 1; i <= num_machines; i++) {
+			messagesCounterPerMachine.put(i, 0);
+		}
+
+		for (Operation op : oplist) {
+
+			if (op instanceof Update) { // controller sends a message to every machine
+
+				for (Map.Entry<Integer, Integer> e : messagesCounterPerMachine.entrySet()) {
+
+					messagesCounterPerMachine.put(e.getKey(), e.getValue()+1);
+
+				}
+
+			} else if (op instanceof Search) { // controller sends a message to one machine
+
+				int max = num_machines, min = 1;
+				int machine = (new Random()).nextInt((max - min) + 1) + min;
+
+				messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
+
+			}
+			
+		}
+		
+		return messagesCounterPerMachine;
+
+	}
+	
+	/* Computes and returns the number of exchange messages between the controller and each machine when adopting query all strategy */
+	public static Map<Integer, Integer> messagesCounterQueryAll(int num_machines, String axis, Queue<Operation> oplist) {
+
+		Map<Integer, Integer> messagesCounterPerMachine = new TreeMap<Integer, Integer>();
+
+		// initializes messages counter per machine
+		for (int i = 1; i <= num_machines; i++) {
+			messagesCounterPerMachine.put(i, 0);
+		}
+
+		for (Operation op : oplist) {
+
+			if (op instanceof Update) { // controller sends a message to one specific machine
+
+				Update up = (Update)op;
+
+				double up_val = up.getAttributes().get(axis);
+
+				for (int i = 1; i <= num_machines; i++) {
+
+					double low = (i-1)/(double)num_machines, high = i/(double)num_machines;
+					if (up_val >= low && up_val < high) {
+						messagesCounterPerMachine.put(i, messagesCounterPerMachine.get(i)+1);
+						break;
+					}
+
+				}
+
+			} else if (op instanceof Search) { // controller sends messages up to num_machines machines
+
+				Search s = (Search)op;
+
+				double search_low_range  = s.getPairs().get(axis).getLow();
+				double search_high_range = s.getPairs().get(axis).getHigh();
+
+				if (search_low_range > search_high_range) {
+
+					for (int i = 1; i <= num_machines; i++) {
+
+						double machine_low_range = (i-1)/(double)num_machines, machine_high_range = i/(double)num_machines;
+						boolean flag = true;
+
+						if (search_low_range >= machine_high_range && search_high_range < machine_low_range) { flag = false; }
+						if (flag) {	messagesCounterPerMachine.put(i, messagesCounterPerMachine.get(i)+1); }
+
+					}
+
+				} else {
+
+					for (int i = 1; i <= num_machines; i++) {
+
+						double machine_low_range = (i-1)/(double)num_machines, machine_high_range = i/(double)num_machines;
+						boolean flag = true;
+
+						if (search_low_range >= machine_high_range || search_high_range < machine_low_range) { flag = false; }
+						if (flag) { messagesCounterPerMachine.put(i, messagesCounterPerMachine.get(i)+1); }	
+
+					}
+
+				}
+
+			}
+
+		}
+
+		return messagesCounterPerMachine;
+
+	}
+	
+	/* Computes and returns the number of exchange messages between the controller and each machine when adopting hyperspace strategy */
+	public static Map<Integer, Integer> messagesCounterHyperspace(int num_machines, Queue<Operation> oplist, List<Region> regions) {
+
+		Map<Integer, Integer> messagesCounterPerMachine = new TreeMap<Integer, Integer>();
+
+		// initializes messages counter per machine
+		for (int i = 1; i <= num_machines; i++) {
+			messagesCounterPerMachine.put(i, 0);
+		}
+
+		for (Operation op : oplist) {
+
+			if (op instanceof Update) { 
+
+				Update up = (Update)op;
+
+				for (Region r : regions) { // iterate over regions
+
+					// Checks whether this update is in this region regarding its attribute
+					boolean flag_attr = true;
+
+					for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
+
+						String up_attr = attr.getKey();
+						double up_val  = attr.getValue();
+
+						if (r.getPairs().containsKey(up_attr)) { // check the region's range for this attribute
+
+							double region_low_range = r.getPairs().get(up_attr).getLow();
+							double region_high_range = r.getPairs().get(up_attr).getHigh();
+
+							if (up_val < region_low_range || up_val >= region_high_range) { // check whether update value is inside this region range
+								flag_attr = false;
+								break;
+							}
+
+						}
+
+					}
+
+					if (flag_attr) {
+
+						int region_index = regions.indexOf(r)+1;
+						for (int machine = (int)((region_index-1)*Math.sqrt(num_machines))+1; machine <= (region_index*Math.sqrt(num_machines)); machine++) {
+							messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
+						}
+						break;
+
+					}
+
+				}
+
+			} else if (op instanceof Search) {
+
+				Search s = (Search)op;
+
+				for (Region r : regions) { // iterate over regions
+
+					boolean flag = true;
+
+					for (Map.Entry<String, Range> search_pair : s.getPairs().entrySet()) { // iterate over this search pairs
+
+						String search_attr = search_pair.getKey();
+						double search_low_range = search_pair.getValue().getLow();
+						double search_high_range = search_pair.getValue().getHigh();
+
+						if (r.getPairs().containsKey(search_attr)) { // check the region's range for this attribute 
+
+							double region_low_range = r.getPairs().get(search_attr).getLow();
+							double region_high_range = r.getPairs().get(search_attr).getHigh();
+
+							if (search_low_range > search_high_range) {
+
+								if (search_low_range >= region_high_range && search_high_range < region_low_range) {
+									flag = false;
+									break;
+								}
+
+							} else {
+
+								if (search_low_range >= region_high_range || search_high_range < region_low_range) { // check whether both region & search ranges overlap
+									flag = false;
+									break;
+								}
+
+							}
+
+						}
+
+					}
+
+					if (flag) {
+
+						int region_index = regions.indexOf(r)+1;
+						
+						int max = (int)(region_index*Math.sqrt(num_machines)), min = (int)((region_index-1)*Math.sqrt(num_machines))+1;
+						int machine = (new Random()).nextInt((max - min) + 1) + min;
+						
+						messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
+
+					}
+
+				}
+
+			}
+
+		}
+
+		return messagesCounterPerMachine;
+		
+	}
 
 }
