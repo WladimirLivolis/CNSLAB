@@ -109,11 +109,6 @@ public class Main {
 				Map<Integer, Integer> replicateAll = Utilities.messagesCounterReplicateAll(num_machines, suboplist);
 				Map<Integer, Integer> queryAll = Utilities.messagesCounterQueryAll(num_machines, axis, suboplist);
 				Map<Integer, Integer> hyperspace = Utilities.messagesCounterHyperspace(num_machines, suboplist, regions3);
-				for (int machine = 1; machine <= num_machines; machine++) {
-					messagesPerMachineReplicateAll.get(machine).add(replicateAll.get(machine));
-					messagesPerMachineQueryAll.get(machine).add(queryAll.get(machine));
-					messagesPerMachineHyperspace.get(machine).add(hyperspace.get(machine));
-				}
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 2...");
@@ -125,7 +120,17 @@ public class Main {
 				regions3.clear(); // clear heuristic3 regions
 				regions3.addAll(heuristic3.partitionGK()); // new partitions are added to heuristic3 regions
 				System.out.println("["+LocalTime.now()+"] Done!");
+				
+				System.out.println("["+LocalTime.now()+"] Calculating no. of exchange messages between machines because of a repartition...");
+				Utilities.messagesBetweenMachinesCounter(hyperspace, regions3);
+				System.out.println("["+LocalTime.now()+"] Done!");
 
+				for (int machine = 1; machine <= num_machines; machine++) {
+					messagesPerMachineReplicateAll.get(machine).add(replicateAll.get(machine));
+					messagesPerMachineQueryAll.get(machine).add(queryAll.get(machine));
+					messagesPerMachineHyperspace.get(machine).add(hyperspace.get(machine));
+				}
+				
 				suboplist = new LinkedList<Operation>();
 				window_moved = false;
 				
