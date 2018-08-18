@@ -31,10 +31,6 @@ public class Region {
 		return name;
 	}
 	
-	public void setPair(String attrkey, Range range) {
-		pairs.put(attrkey, range);
-	}
-	
 	public void setPair(String attrkey, double low, double high) {
 		Range range = new Range(low, high);
 		pairs.put(attrkey, range);

@@ -101,9 +101,19 @@ public class Utilities {
 	
 	public static List<Region> copyRegions(List<Region> regions) {
 		List<Region> copy = new ArrayList<Region>(regions.size());
-		for (Region r : regions)
-			copy.add(new Region(r.getName(),r.getPairs()));
+		for (Region r : regions) {
+			copy.add(new Region(r.getName(), r.getPairs()));
+		}
 		return copy;
+	}
+	
+	public static void copyRegionsRanges(List<Region> regionsWithRangesToBeSet, List<Region> regionsWithRangesToBeCopied) {
+		for (Region region : regionsWithRangesToBeSet) {
+			int regionIndex = regionsWithRangesToBeSet.indexOf(region);
+			for (Map.Entry<String, Range> pair : regionsWithRangesToBeCopied.get(regionIndex).getPairs().entrySet()) {
+				region.setPair(pair.getKey(), pair.getValue().getLow(), pair.getValue().getHigh());
+			}
+		}
 	}
 	
 	public static List<Region> buildNewRegions(int num_attr) {
