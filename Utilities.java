@@ -920,11 +920,13 @@ public class Utilities {
 		// I) Checks guids that must leave this region because of a repartition 
 		for (Region r : regions) { // iterates over regions
 			
-			for (int guid : r.getGUIDs().keySet()) { // iterates over this region's guids
+			Map<Integer, Map<String, Double>> region_guids = new TreeMap<Integer, Map<String, Double>>(r.getGUIDs());
+			
+			for (int guid : region_guids.keySet()) { // iterates over this region's guids
 			
 				boolean guid_belongs_to_this_region = true;
 				
-				for (Map.Entry<String, Double> attr : r.getGUIDs().get(guid).entrySet()) { // iterates over this guid's attributes
+				for (Map.Entry<String, Double> attr : region_guids.get(guid).entrySet()) { // iterates over this guid's attributes
 					
 					String guidAttrKey = attr.getKey();    
 					double guidAttrVal = attr.getValue();
@@ -953,7 +955,7 @@ public class Utilities {
 					}
 					
 					// removes guid from this region
-					leaving_guids.put(guid, r.getGUIDs().get(guid));
+					leaving_guids.put(guid, region_guids.get(guid));
 					r.removeGuid(guid);
 					
 				}
