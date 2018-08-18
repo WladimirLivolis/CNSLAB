@@ -545,39 +545,18 @@ public class Utilities {
 		// I) This first iteration over regions will look for touches due to previous GUID's positions
 		for (Region region : regions) {
 
-			boolean previouslyInRegion = true;
-			int count = 0;
+			boolean previouslyInRegion = region.hasThisGuid(guid);
 
-			// Checks whether this update's GUID is already in this region
-			for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
-
-				if (!attr.getKey().contains("'")) { continue; } // here we just look into its guid attributes, i.e., the attributes ending with '
-
-				String guidAttrKey = attr.getKey().substring(0, attr.getKey().length()-1);    
-				double guidAttrVal = attr.getValue();
-
-				if (region.getPairs().containsKey(guidAttrKey)) { // check the region's range for this attribute
-					
-					double regionRangeStart = region.getPairs().get(guidAttrKey).getLow(); 
-					double regionRangeEnd   = region.getPairs().get(guidAttrKey).getHigh(); 
-
-					if (guidAttrVal < regionRangeStart || guidAttrVal >= regionRangeEnd) { // checks whether guid is in this region
-						previouslyInRegion = false;
-						break;
-					}
-				}
-			}
-
-			// If so ...
+			// If guid is in this region
 			if (previouslyInRegion) {
 				
-				count++; // counts a touch
-				if (region.hasThisGuid(guid)) { region.removeGuid(guid); } // removes it from this region's guid list
+				region.removeGuid(guid); // removes it from this region's guid list 
+				
 				previousRegion = region;
 				
-				// Sets this region's update touch count
+				// Counts one touch
 				int previous_count = region.getUpdateTouches();
-				region.setUpdateTouches(previous_count+count);
+				region.setUpdateTouches(previous_count+1);
 				
 				break;
 				
@@ -589,12 +568,9 @@ public class Utilities {
 		for (Region region : regions) {
 
 			boolean comingToRegion = true;
-			int count = 0;
 
 			// Checks whether this update moves a GUID to this region
 			for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
-
-				if (attr.getKey().contains("'")) { continue; } // here we just look into this update attributes, i.e., the attributes not ending with '
 
 				String updateAttrKey = attr.getKey();
 				double updateAttrVal = attr.getValue();
@@ -622,11 +598,11 @@ public class Utilities {
 				}
 				region.insertGuid(guid, guid_attr); // adds it to this region's guid list
 
-				if (!region.equals(previousRegion)) { count++; } // if it is coming from another region, counts one more touch
-				
-				// Sets this region's update touch count
-				int previous_count = region.getUpdateTouches();
-				region.setUpdateTouches(previous_count+count);
+				// if it is coming from another region, counts one more touch
+				if (!region.equals(previousRegion)) {
+					int previous_count = region.getUpdateTouches();
+					region.setUpdateTouches(previous_count+1);
+				}
 				
 				break;
 
@@ -715,7 +691,6 @@ public class Utilities {
 	private static void clear_regions_touches(List<Region> regions) {
 		
 		for (Region r : regions) {
-			r.clearGUIDs();
 			r.setSearchTouches(0);
 			r.setUpdateTouches(0);
 		}
@@ -841,23 +816,16 @@ public class Utilities {
 			if (op instanceof Update) { 
 
 				Update up = (Update)op;
+				int guid = up.getGuid();
 
 				for (Region r : regions) { // iterate over regions
 
-					// I) Checks whether this update is in this region regarding its attribute or its guid
-					boolean flag_attr = true, flag_guid = true;
+					// Checks whether this update is in this region regarding its attribute or its guid
+					boolean flag_attr = true, flag_guid = r.hasThisGuid(guid);
 
 					for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
 						
-						boolean isGuid = attr.getKey().contains("'");
-						
-						String attrKey;
-						if (isGuid) { // it's a guid attribute
-							attrKey = attr.getKey().substring(0, attr.getKey().length()-1);
-						} else { // it's an update attribute
-							attrKey = attr.getKey();
-						}
-
+						String attrKey = attr.getKey();
 						double attrVal  = attr.getValue();
 
 						if (r.getPairs().containsKey(attrKey)) { // check the region's range for this attribute
@@ -866,11 +834,7 @@ public class Utilities {
 							double region_high_range = r.getPairs().get(attrKey).getHigh();
 
 							if (attrVal < region_low_range || attrVal >= region_high_range) { // check whether attribute value is inside this region range
-								if (isGuid) {
-									flag_guid = false;
-								} else {
-									flag_attr = false;
-								}
+								flag_attr = false;
 							}
 
 						}
@@ -948,8 +912,8 @@ public class Utilities {
 		
 	}
 	
-	/* Computes and returns the number of exchange messages between machines because of repartitions */
-	public static void messagesBetweenMachinesCounter(Map<Integer, Integer> messagesCounterPerMachine, List<Region> regions) {
+	/* Computes and returns the number of exchange messages because of a repartition */
+	public static void messagesBecauseOfRepartitionCounter(Map<Integer, Integer> messagesCounterPerMachine, List<Region> regions) {
 		
 		Map<Integer, Map<String, Double>> leaving_guids = new TreeMap<Integer, Map<String, Double>>();
 		
@@ -981,7 +945,16 @@ public class Utilities {
 				
 				if (!guid_belongs_to_this_region) { // if guid doesn't belong to this region anymore
 					
-					leaving_guids.put(guid, r.getGUIDs().get(guid)); // then its leaving this region
+					// counts one message for each machine associated with this region
+					int num_machines = messagesCounterPerMachine.size();
+					int region_index = regions.indexOf(r)+1;
+					for (int machine = (int)((region_index-1)*Math.sqrt(num_machines))+1; machine <= (region_index*Math.sqrt(num_machines)); machine++) {
+						messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
+					}
+					
+					// removes guid from this region
+					leaving_guids.put(guid, r.getGUIDs().get(guid));
+					r.removeGuid(guid);
 					
 				}
 				
@@ -1015,13 +988,19 @@ public class Utilities {
 					
 				}
 				
-				if (guid_belongs_to_this_region) { // if guid now belongs to this region, it counts one message for each machine associated with this region
+				if (guid_belongs_to_this_region) { // if guid now belongs to this region
 					
+					// counts one message for each machine associated with this region
 					int num_machines = messagesCounterPerMachine.size();
 					int region_index = regions.indexOf(r)+1;
 					for (int machine = (int)((region_index-1)*Math.sqrt(num_machines))+1; machine <= (region_index*Math.sqrt(num_machines)); machine++) {
 						messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
 					}
+					
+					// inserts guid into this region
+					r.insertGuid(guid, leaving_guids.get(guid));
+					
+					break;
 					
 				}
 				
