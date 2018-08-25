@@ -12,35 +12,6 @@ import java.util.TreeMap;
 
 public class Main {
 	
-	private static Map<Integer, Double> calculateConfidenceInterval(Map<Integer, List<Integer>> values, Map<Integer, Double> mean) {
-
-		Map<Integer, Double> confidenceInterval = new TreeMap<Integer, Double>();
-
-		for (Map.Entry<Integer, List<Integer>> e : values.entrySet()) {
-
-			double squaredDifferenceSum = 0.0, variance = 0.0, standardDeviation = 0.0;
-
-			for (int num : e.getValue()) {
-
-				squaredDifferenceSum += (num - mean.get(e.getKey())) * (num - mean.get(e.getKey()));
-
-			}
-
-			variance = squaredDifferenceSum / e.getValue().size();
-			standardDeviation = Math.sqrt(variance);
-
-			// value for 95% confidence interval
-			double confidenceLevel = 1.96;
-			double delta = confidenceLevel * standardDeviation / Math.sqrt(e.getValue().size());
-
-			confidenceInterval.put(e.getKey(), delta);
-
-		}
-
-		return confidenceInterval;
-
-	}
-	
 	private static void metricDistributionPerRegion(Queue<Operation> oplist, List<Region> regions, String metric, String fileName, ArrayList<Double> jfiList) {
 		
 		double jfi = Utilities.JFI(metric, oplist, regions);
@@ -81,7 +52,7 @@ public class Main {
 		
 	}
 	
-	private static void testHeuristicsAgainstNewOperations(String sampleFile, Queue<Operation> op_window, List<Region> regions2, List<Region> regions3, HeuristicV2 heuristic2, HeuristicV3 heuristic3, ArrayList<Double> jfi_list_h2, ArrayList<Double> jfi_list_h3, String metric, int num_machines, String axis, Map<Integer, List<Integer>> messagesPerMachineReplicateAll, Map<Integer, List<Integer>> messagesPerMachineQueryAll, Map<Integer, List<Integer>> messagesPerMachineHyperspaceH2, Map<Integer, List<Integer>> messagesPerMachineHyperspaceH3) {
+	private static void testHeuristicsAgainstNewOperations(String sampleFile, Queue<Operation> op_window, List<Region> regions2, List<Region> regions3, HeuristicV2 heuristic2, HeuristicV3 heuristic3, ArrayList<Double> jfi_list_h2, ArrayList<Double> jfi_list_h3, String metric, int num_machines, String axis, Map<Integer, Integer> messagesPerMachineReplicateAll, Map<Integer, Integer> messagesPerMachineQueryAll, Map<Integer, Integer> messagesPerMachineHyperspace, Map<Integer, Integer> messagesPerMachineHyperspaceV0) {
 		
 		// Reading operations from testing sample
 		System.out.println("["+LocalTime.now()+"] Reading testing sample file...");
@@ -108,9 +79,12 @@ public class Main {
 				System.out.println("["+LocalTime.now()+"] Calculating no. of exchange messages between controller and each machine...");
 				Map<Integer, Integer> replicateAll = Utilities.messagesCounterReplicateAll(num_machines, suboplist);
 				Map<Integer, Integer> queryAll = Utilities.messagesCounterQueryAll(num_machines, axis, suboplist);
-				Map<Integer, Integer> hyperspaceH2 = Utilities.messagesCounterHyperspace(num_machines, suboplist, regions2);
-				Map<Integer, Integer> hyperspaceH3 = Utilities.messagesCounterHyperspace(num_machines, suboplist, regions3);
+				Map<Integer, Integer> hyperspace = Utilities.messagesCounterHyperspace(num_machines, suboplist, regions3);
 				System.out.println("["+LocalTime.now()+"] Done!");
+				
+				for (int machine = 1; machine <= num_machines; machine++) {
+					messagesPerMachineHyperspaceV0.put(machine, messagesPerMachineHyperspaceV0.get(machine)+hyperspace.get(machine));
+				}
 				
 				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 2...");
 				Utilities.copyRegionsRanges(regions2, heuristic2.partition(op_window));
@@ -121,15 +95,14 @@ public class Main {
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Calculating no. of exchange messages because of a repartition...");
-				Utilities.messagesBecauseOfRepartitionCounter(hyperspaceH2, regions2);
-				Utilities.messagesBecauseOfRepartitionCounter(hyperspaceH3, regions3);
+				Utilities.checkGUIDsAfterRepartition(null, regions2, false);
+				Utilities.checkGUIDsAfterRepartition(hyperspace, regions3, true);
 				System.out.println("["+LocalTime.now()+"] Done!");
 
 				for (int machine = 1; machine <= num_machines; machine++) {
-					messagesPerMachineReplicateAll.get(machine).add(replicateAll.get(machine));
-					messagesPerMachineQueryAll.get(machine).add(queryAll.get(machine));
-					messagesPerMachineHyperspaceH2.get(machine).add(hyperspaceH2.get(machine));
-					messagesPerMachineHyperspaceH3.get(machine).add(hyperspaceH3.get(machine));
+					messagesPerMachineReplicateAll.put(machine, messagesPerMachineReplicateAll.get(machine)+replicateAll.get(machine));
+					messagesPerMachineQueryAll.put(machine, messagesPerMachineQueryAll.get(machine)+queryAll.get(machine));
+					messagesPerMachineHyperspace.put(machine, messagesPerMachineHyperspace.get(machine)+hyperspace.get(machine));
 				}
 				
 				suboplist = new LinkedList<Operation>();
@@ -156,7 +129,7 @@ public class Main {
 		
 		int num_attr = 3;
 		int num_mach = 64;
-		int num_max_guids = 500;		
+		int num_max_guids = 100000;		
 		int update_sample_size = 524288; // 2^19 operations
 		int search_sample_size = 524288; // 2^19 operations
 		int window_size = 67108864; // 2^26 observations
@@ -261,60 +234,25 @@ public class Main {
 				
 		/* TESTING HEURISTICS */
 		
-		Map<Integer, List<Integer>> messagesPerMachineReplicateAll = new TreeMap<Integer, List<Integer>>();		
-		Map<Integer, List<Integer>> messagesPerMachineQueryAll = new TreeMap<Integer, List<Integer>>();
-		Map<Integer, List<Integer>> messagesPerMachineHyperspaceH2 = new TreeMap<Integer, List<Integer>>();
-		Map<Integer, List<Integer>> messagesPerMachineHyperspaceH3 = new TreeMap<Integer, List<Integer>>();
+		Map<Integer, Integer> messagesPerMachineReplicateAll = new TreeMap<Integer, Integer>();		
+		Map<Integer, Integer> messagesPerMachineQueryAll = new TreeMap<Integer, Integer>();
+		Map<Integer, Integer> messagesPerMachineHyperspace = new TreeMap<Integer, Integer>();
+		Map<Integer, Integer> messagesPerMachineHyperspaceV0 = new TreeMap<Integer, Integer>();
 		for (int machine = 1; machine <= num_mach; machine++) {
-			messagesPerMachineReplicateAll.put(machine, new ArrayList<Integer>());
-			messagesPerMachineQueryAll.put(machine, new ArrayList<Integer>());
-			messagesPerMachineHyperspaceH2.put(machine, new ArrayList<Integer>());
-			messagesPerMachineHyperspaceH3.put(machine, new ArrayList<Integer>());
+			messagesPerMachineReplicateAll.put(machine, 0);
+			messagesPerMachineQueryAll.put(machine, 0);
+			messagesPerMachineHyperspace.put(machine, 0);
+			messagesPerMachineHyperspaceV0.put(machine, 0);
 		}
 		
 		// tests heuristics
-		testHeuristicsAgainstNewOperations("./samples/testing_sample1.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspaceH2, messagesPerMachineHyperspaceH3);
-		testHeuristicsAgainstNewOperations("./samples/testing_sample2.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspaceH2, messagesPerMachineHyperspaceH3);
-		testHeuristicsAgainstNewOperations("./samples/testing_sample3.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspaceH2, messagesPerMachineHyperspaceH3);
-		testHeuristicsAgainstNewOperations("./samples/testing_sample4.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspaceH2, messagesPerMachineHyperspaceH3);
-		
-		// Calculates the average number of exchange messages per machine
-		Map<Integer, Double> meanPerMachineReplicateAll = new TreeMap<Integer, Double>();
-		Map<Integer, Double> meanPerMachineQueryAll = new TreeMap<Integer, Double>();
-		Map<Integer, Double> meanPerMachineHyperspaceH2 = new TreeMap<Integer, Double>();
-		Map<Integer, Double> meanPerMachineHyperspaceH3 = new TreeMap<Integer, Double>();
-		for (int machine = 1; machine <= num_mach; machine++) {
-			
-			double sum = 0;
-			List<Integer> messagesList = messagesPerMachineReplicateAll.get(machine);
-			for (int i : messagesList) { sum += i; }
-			meanPerMachineReplicateAll.put(machine, sum/(double)messagesList.size());
-			
-			sum = 0;
-			messagesList = messagesPerMachineQueryAll.get(machine);
-			for (int i : messagesList) { sum += i; }
-			meanPerMachineQueryAll.put(machine, sum/(double)messagesList.size());
-			
-			sum = 0;
-			messagesList = messagesPerMachineHyperspaceH2.get(machine);
-			for (int i : messagesList) { sum += i; }
-			meanPerMachineHyperspaceH2.put(machine, sum/(double)messagesList.size());
-			
-			sum = 0;
-			messagesList = messagesPerMachineHyperspaceH3.get(machine);
-			for (int i : messagesList) { sum += i; }
-			meanPerMachineHyperspaceH3.put(machine, sum/(double)messagesList.size());
-
-		}
-		
-		// Calculates confidence interval for exchange messages per machine
-		Map<Integer, Double> confidenceIntervalReplicateAll = calculateConfidenceInterval(messagesPerMachineReplicateAll, meanPerMachineReplicateAll);
-		Map<Integer, Double> confidenceIntervalQueryAll = calculateConfidenceInterval(messagesPerMachineQueryAll, meanPerMachineQueryAll);
-		Map<Integer, Double> confidenceIntervalHyperspaceH2 = calculateConfidenceInterval(messagesPerMachineHyperspaceH2, meanPerMachineHyperspaceH2);
-		Map<Integer, Double> confidenceIntervalHyperspaceH3 = calculateConfidenceInterval(messagesPerMachineHyperspaceH2, meanPerMachineHyperspaceH3);
+		testHeuristicsAgainstNewOperations("./samples/testing_sample1.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
+		testHeuristicsAgainstNewOperations("./samples/testing_sample2.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
+		testHeuristicsAgainstNewOperations("./samples/testing_sample3.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
+		testHeuristicsAgainstNewOperations("./samples/testing_sample4.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
 		
 		// Writes log files to generate graphs with gnuplot
-		PrintWriter pw_h2 = null, pw_h3 = null, pw_replicateAll = null, pw_queryAll = null, pw_hyperspace_h2 = null, pw_hyperspace_h3 = null;
+		PrintWriter pw_h2 = null, pw_h3 = null, pw_replicateAll = null, pw_queryAll = null, pw_hyperspace = null, pw_hyperspace_v0 = null;
 		
 		try {
 			
@@ -332,19 +270,19 @@ public class Main {
 			
 			pw_replicateAll = new PrintWriter("replicateAll_"+LocalTime.now()+".txt");
 			pw_queryAll = new PrintWriter("queryAll_"+LocalTime.now()+".txt");
-			pw_hyperspace_h2 = new PrintWriter("hyperspace_h2_"+LocalTime.now()+".txt");
-			pw_hyperspace_h3 = new PrintWriter("hyperspace_h3_"+LocalTime.now()+".txt");
+			pw_hyperspace = new PrintWriter("hyperspace_"+LocalTime.now()+".txt");
+			pw_hyperspace_v0 = new PrintWriter("hyperspace_v0_"+LocalTime.now()+".txt");
 			
-			pw_replicateAll.println("# machine\tmean\tCI");
-			pw_queryAll.println("# machine\tmean\tCI");
-			pw_hyperspace_h2.println("# machine\tmean\tCI");
-			pw_hyperspace_h3.println("# machine\tmean\tCI");
+			pw_replicateAll.println("# machine\tmessages");
+			pw_queryAll.println("# machine\tmessages");
+			pw_hyperspace.println("# machine\tmessages");
+			pw_hyperspace_v0.println("# machine\tmessages");
 			
 			for (int machine = 1; machine <= num_mach; machine++) {
-				pw_replicateAll.println(machine+"\t"+meanPerMachineReplicateAll.get(machine)+"\t"+confidenceIntervalReplicateAll.get(machine));
-				pw_queryAll.println(machine+"\t"+meanPerMachineQueryAll.get(machine)+"\t"+confidenceIntervalQueryAll.get(machine));
-				pw_hyperspace_h2.println(machine+"\t"+meanPerMachineHyperspaceH2.get(machine)+"\t"+confidenceIntervalHyperspaceH2.get(machine));
-				pw_hyperspace_h3.println(machine+"\t"+meanPerMachineHyperspaceH3.get(machine)+"\t"+confidenceIntervalHyperspaceH3.get(machine));
+				pw_replicateAll.println(machine+"\t"+messagesPerMachineReplicateAll.get(machine));
+				pw_queryAll.println(machine+"\t"+messagesPerMachineQueryAll.get(machine));
+				pw_hyperspace.println(machine+"\t"+messagesPerMachineHyperspace.get(machine));
+				pw_hyperspace_v0.println(machine+"\t"+messagesPerMachineHyperspaceV0.get(machine));
 			}
 			
 			
@@ -355,8 +293,8 @@ public class Main {
 			pw_h3.close();
 			pw_replicateAll.close();
 			pw_queryAll.close();
-			pw_hyperspace_h2.close();
-			pw_hyperspace_h3.close();
+			pw_hyperspace.close();
+			pw_hyperspace_v0.close();
 		}
 
 	}
