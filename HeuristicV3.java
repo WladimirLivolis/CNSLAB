@@ -1,5 +1,5 @@
 import java.io.PrintWriter;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -253,7 +253,7 @@ public class HeuristicV3 {
 		
 		try {
 
-			PrintWriter pw = new PrintWriter("./heuristic3/heuristic3_quant_"+LocalTime.now()+".txt");
+			PrintWriter pw = new PrintWriter("./heuristic3/heuristic3_quant_"+LocalDateTime.now()+".txt");
 			pw.println("phi\tquantile");
 			
 			for (Map.Entry<Double, Double> e : quantiles.entrySet()) {
