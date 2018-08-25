@@ -1,5 +1,6 @@
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -256,8 +257,8 @@ public class Main {
 		
 		try {
 			
-			pw_h2 = new PrintWriter("heuristic2_jfi_"+LocalTime.now()+".txt");
-			pw_h3 = new PrintWriter("heuristic3_jfi_"+LocalTime.now()+".txt");
+			pw_h2 = new PrintWriter("heuristic2_jfi_"+LocalDateTime.now()+".txt");
+			pw_h3 = new PrintWriter("heuristic3_jfi_"+LocalDateTime.now()+".txt");
 			
 			pw_h2.println("# repartitions\tJFI");
 			for (double jfi : jfi_list_h2) {
@@ -268,10 +269,10 @@ public class Main {
 				pw_h3.println((jfi_list_h3.indexOf(jfi)+1)+"\t"+jfi);
 			}
 			
-			pw_replicateAll = new PrintWriter("replicateAll_"+LocalTime.now()+".txt");
-			pw_queryAll = new PrintWriter("queryAll_"+LocalTime.now()+".txt");
-			pw_hyperspace = new PrintWriter("hyperspace_"+LocalTime.now()+".txt");
-			pw_hyperspace_v0 = new PrintWriter("hyperspace_v0_"+LocalTime.now()+".txt");
+			pw_replicateAll = new PrintWriter("replicateAll_"+LocalDateTime.now()+".txt");
+			pw_queryAll = new PrintWriter("queryAll_"+LocalDateTime.now()+".txt");
+			pw_hyperspace = new PrintWriter("hyperspace_"+LocalDateTime.now()+".txt");
+			pw_hyperspace_v0 = new PrintWriter("hyperspace_v0_"+LocalDateTime.now()+".txt");
 			
 			pw_replicateAll.println("# machine\tmessages");
 			pw_queryAll.println("# machine\tmessages");
