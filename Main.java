@@ -130,10 +130,10 @@ public class Main {
 		
 		int num_attr = 3;
 		int num_mach = 64;
-		int num_max_guids = 16384; // 2^14		
-		int update_sample_size = 32768; // 2^15 operations
-		int search_sample_size = 32768; // 2^15 operations
-		int window_size = 134217728; // 2^27 observations (touches)
+		int num_max_guids = 8192; // 2^13		
+		int update_sample_size = 16384; // 2^14 operations
+		int search_sample_size = 16384; // 2^14 operations
+		int window_size = 33554432; // 2^25 observations (touches)
 		
 		String axis = "A1";
 		String dist = "uniform";
@@ -167,7 +167,7 @@ public class Main {
 		int numOfTestingSamples = 4;
 
 		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
-		List<String> sampleFileNames = new ArrayList<String>(5);
+		List<String> sampleFileNames = new ArrayList<String>(numOfTestingSamples+1);
 		sampleFileNames.add("./samples/training_sample_"+LocalDateTime.now()+".json");
 		for (int i = 1; i <= numOfTestingSamples; i++) {
 			sampleFileNames.add("./samples/testing_sample_"+i+"_"+LocalDateTime.now()+".json");
