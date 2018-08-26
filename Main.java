@@ -185,7 +185,7 @@ public class Main {
 		System.out.println("["+LocalTime.now()+"] Generating testing sample 2: Uniform (0.2,0.6)...");
 		distParams.put("low", 0.2);
 		distParams.put("high", 0.6);
-		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(2)+".json", new Random());
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(2), new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Generating testing sample 3: Uniform (0.4,0.8)...");
 		distParams.put("low", 0.4);
