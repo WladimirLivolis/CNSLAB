@@ -163,32 +163,39 @@ public class Main {
 		}
 		
 		double e = 1/64d;
+		
+		int numOfTestingSamples = 4;
 
 		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
+		List<String> sampleFileNames = new ArrayList<String>(5);
+		sampleFileNames.add("./samples/training_sample_"+LocalDateTime.now()+".json");
+		for (int i = 1; i <= numOfTestingSamples; i++) {
+			sampleFileNames.add("./samples/testing_sample_"+i+"_"+LocalDateTime.now()+".json");
+		}
 		
 		// Generates update & search loads
 		System.out.println("["+LocalTime.now()+"] Generating training sample...");
-		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/training_sample.json", new Random());
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(0), new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Generating testing sample 1: Uniform (0.0,0.4)...");
 		distParams.put("low", 0.0);
 		distParams.put("high", 0.4);
-		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample1.json", new Random());
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(1), new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Generating testing sample 2: Uniform (0.2,0.6)...");
 		distParams.put("low", 0.2);
 		distParams.put("high", 0.6);
-		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample2.json", new Random());
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(2)+".json", new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Generating testing sample 3: Uniform (0.4,0.8)...");
 		distParams.put("low", 0.4);
 		distParams.put("high", 0.8);
-		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample3.json", new Random());
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(3), new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Generating testing sample 4: Uniform (0.6,1.0)...");
 		distParams.put("low", 0.6);
 		distParams.put("high", 1.0);
-		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, "./samples/testing_sample4.json", new Random());
+		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(4), new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
 								
 		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
@@ -198,7 +205,7 @@ public class Main {
 		
 		// Reading operations from training sample
 		System.out.println("["+LocalTime.now()+"] Reading training sample file...");
-		Queue<Operation> oplist = Utilities.readOperationsFile("./samples/training_sample.json");
+		Queue<Operation> oplist = Utilities.readOperationsFile(sampleFileNames.get(0));
 		System.out.println("["+LocalTime.now()+"] Done!");
 		
 		Queue<Operation> op_window = new LinkedList<Operation>();
@@ -247,10 +254,10 @@ public class Main {
 		}
 		
 		// tests heuristics
-		testHeuristicsAgainstNewOperations("./samples/testing_sample1.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
-		testHeuristicsAgainstNewOperations("./samples/testing_sample2.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
-		testHeuristicsAgainstNewOperations("./samples/testing_sample3.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
-		testHeuristicsAgainstNewOperations("./samples/testing_sample4.json", op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
+		testHeuristicsAgainstNewOperations(sampleFileNames.get(1), op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
+		testHeuristicsAgainstNewOperations(sampleFileNames.get(2), op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
+		testHeuristicsAgainstNewOperations(sampleFileNames.get(3), op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
+		testHeuristicsAgainstNewOperations(sampleFileNames.get(4), op_window, regions2, regions3, heuristic2, heuristic3, jfi_list_h2, jfi_list_h3, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace, messagesPerMachineHyperspaceV0);
 		
 		// Writes log files to generate graphs with gnuplot
 		PrintWriter pw_h2 = null, pw_h3 = null, pw_replicateAll = null, pw_queryAll = null, pw_hyperspace = null, pw_hyperspace_v0 = null;
