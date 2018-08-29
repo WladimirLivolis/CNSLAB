@@ -264,8 +264,8 @@ public class Main {
 		
 		try {
 			
-			pw_h2 = new PrintWriter("heuristic2_jfi_"+LocalDateTime.now()+".txt");
-			pw_h3 = new PrintWriter("heuristic3_jfi_"+LocalDateTime.now()+".txt");
+			pw_h2 = new PrintWriter("./output/heuristic2_jfi_"+LocalDateTime.now()+".txt");
+			pw_h3 = new PrintWriter("./output/heuristic3_jfi_"+LocalDateTime.now()+".txt");
 			
 			pw_h2.println("# repartitions\tJFI");
 			for (double jfi : jfi_list_h2) {
@@ -276,10 +276,10 @@ public class Main {
 				pw_h3.println((jfi_list_h3.indexOf(jfi)+1)+"\t"+jfi);
 			}
 			
-			pw_replicateAll = new PrintWriter("replicateAll_"+LocalDateTime.now()+".txt");
-			pw_queryAll = new PrintWriter("queryAll_"+LocalDateTime.now()+".txt");
-			pw_hyperspace = new PrintWriter("hyperspace_"+LocalDateTime.now()+".txt");
-			pw_hyperspace_v0 = new PrintWriter("hyperspace_v0_"+LocalDateTime.now()+".txt");
+			pw_replicateAll = new PrintWriter("./output/replicateAll_"+LocalDateTime.now()+".txt");
+			pw_queryAll = new PrintWriter("./output/queryAll_"+LocalDateTime.now()+".txt");
+			pw_hyperspace = new PrintWriter("./output/hyperspace_"+LocalDateTime.now()+".txt");
+			pw_hyperspace_v0 = new PrintWriter("./output/hyperspace_v0_"+LocalDateTime.now()+".txt");
 			
 			pw_replicateAll.println("# machine\tmessages");
 			pw_queryAll.println("# machine\tmessages");
