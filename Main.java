@@ -126,6 +126,33 @@ public class Main {
 		
 	}
 	
+	private static Map<Integer, Map<String, Double>> generateRandomIntervals(int qty, Random rnd) {
+		
+		Map<Integer, Map<String, Double>> intervals = new TreeMap<Integer, Map<String, Double>>();
+		
+		for (int i = 1; i <= qty; i++) {
+		
+			Map<String, Double> interval = new HashMap<String, Double>(2);
+			
+			double val1 = rnd.nextDouble();
+			double val2 = rnd.nextDouble();
+			
+			if (val2 > val1) {
+				interval.put("start", val1);
+				interval.put("end", val2);
+			} else {
+				interval.put("start", val2);
+				interval.put("end", val1);
+			}
+			
+			intervals.put(i, interval);
+		
+		}
+		
+		return intervals;
+		
+	}
+	
 	public static void main(String[] args) {
 		
 		int num_attr = 3;
@@ -167,36 +194,29 @@ public class Main {
 		int numOfTestingSamples = 4;
 
 		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
+		
 		List<String> sampleFileNames = new ArrayList<String>(numOfTestingSamples+1);
 		sampleFileNames.add("./samples/training_sample_"+LocalDateTime.now()+".json");
 		for (int i = 1; i <= numOfTestingSamples; i++) {
 			sampleFileNames.add("./samples/testing_sample_"+i+"_"+LocalDateTime.now()+".json");
 		}
 		
-		// Generates update & search loads
+		Map<Integer, Map<String, Double>> intervals = generateRandomIntervals(numOfTestingSamples, new Random());
+		
+		/* GENERATING SAMPLES */
+		
 		System.out.println("["+LocalTime.now()+"] Generating training sample...");
 		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(0), new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
-		System.out.println("["+LocalTime.now()+"] Generating testing sample 1: Uniform (0.0,0.4)...");
-		distParams.put("low", 0.0);
-		distParams.put("high", 0.4);
-		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(1), new Random());
-		System.out.println("["+LocalTime.now()+"] Done!");
-		System.out.println("["+LocalTime.now()+"] Generating testing sample 2: Uniform (0.2,0.6)...");
-		distParams.put("low", 0.2);
-		distParams.put("high", 0.6);
-		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(2), new Random());
-		System.out.println("["+LocalTime.now()+"] Done!");
-		System.out.println("["+LocalTime.now()+"] Generating testing sample 3: Uniform (0.4,0.8)...");
-		distParams.put("low", 0.4);
-		distParams.put("high", 0.8);
-		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(3), new Random());
-		System.out.println("["+LocalTime.now()+"] Done!");
-		System.out.println("["+LocalTime.now()+"] Generating testing sample 4: Uniform (0.6,1.0)...");
-		distParams.put("low", 0.6);
-		distParams.put("high", 1.0);
-		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(4), new Random());
-		System.out.println("["+LocalTime.now()+"] Done!");
+		
+		for (int i = 1; i <= numOfTestingSamples; i++) {
+			double start = intervals.get(i).get("start"), end = intervals.get(i).get("end");
+			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i+": Uniform ("+start+", "+end+")...");
+			distParams.put("low", start);
+			distParams.put("high", end);
+			Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(i), new Random());
+			System.out.println("["+LocalTime.now()+"] Done!");
+		}
 								
 		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
 		HeuristicV3 heuristic3 = new HeuristicV3(num_attr, num_mach, axis, metric, window_size, e);
