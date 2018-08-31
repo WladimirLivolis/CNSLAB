@@ -134,16 +134,8 @@ public class Main {
 		
 			Map<String, Double> interval = new HashMap<String, Double>(2);
 			
-			double val1 = rnd.nextDouble();
-			double val2 = rnd.nextDouble();
-			
-			if (val2 > val1) {
-				interval.put("start", val1);
-				interval.put("end", val2);
-			} else {
-				interval.put("start", val2);
-				interval.put("end", val1);
-			}
+			interval.put("start", rnd.nextDouble());
+			interval.put("end", rnd.nextDouble());
 			
 			intervals.put(i, interval);
 		

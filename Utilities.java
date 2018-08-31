@@ -132,6 +132,18 @@ public class Utilities {
 		return regions;
 	}
 	
+	private static double nextUniform(double low, double high, Random rnd) {
+		double val;
+		if (low > high) {
+			do {
+				val = rnd.nextDouble();
+			} while(val > high && val < low);
+		} else {
+			val = low + (high - low) * rnd.nextDouble();
+		}
+		return val;
+	}
+	
 	private static double nextExponential(double lambda, Random rnd) {
 		double val;
 		do {
@@ -165,7 +177,7 @@ public class Utilities {
 			default:
 				double low = distParams.get("low");
 				double high = distParams.get("high");
-				val = low + (high - low) * rnd.nextDouble();
+				val = nextUniform(low, high, rnd);
 				break;
 		}
 		return val;
