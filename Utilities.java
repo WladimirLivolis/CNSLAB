@@ -924,10 +924,15 @@ public class Utilities {
 		
 	}
 	
-	/* Look for GUIDs that must leave or enter a region because of a repartition. It can also compute the number of exchange messages because of a repartition */
-	public static void checkGUIDsAfterRepartition(Map<Integer, Integer> messagesCounterPerMachine, List<Region> regions, boolean mustCountMessages) {
+	/* Look for GUIDs that must leave or enter a region because of a repartition. It can also compute the number of exchange messages because of a repartition.
+	 * If countMessagesFlag = 0, it does not compute the number of messages.
+	 * If countMessagesFlag = 1, the list of guids leaving or coming to a region is counted as one message to that region.
+	 * If countMessagesFlag = 2, each guid leaving or coming to a region is counted as one message to that region. */
+	public static void checkGUIDsAfterRepartition(Map<Integer, Integer> messagesCounterPerMachine, List<Region> regions, int countMessagesFlag) {
 		
 		Map<Integer, Map<String, Double>> leaving_guids = new TreeMap<Integer, Map<String, Double>>();
+		Map<Region, List<Integer>> outgoing_regions = new HashMap<Region, List<Integer>>();
+		Map<Region, List<Integer>> incoming_regions = new HashMap<Region, List<Integer>>();
 		
 		// I) Checks guids that must leave this region because of a repartition 
 		for (Region r : regions) { // iterates over regions
@@ -958,21 +963,15 @@ public class Utilities {
 				}
 				
 				if (!guid_belongs_to_this_region) { // if guid doesn't belong to this region anymore
-					
-					if (mustCountMessages) {
-
-						// counts one message for each machine associated with this region
-						int num_machines = messagesCounterPerMachine.size();
-						int region_index = regions.indexOf(r)+1;
-						for (int machine = (int)((region_index-1)*Math.sqrt(num_machines))+1; machine <= (region_index*Math.sqrt(num_machines)); machine++) {
-							messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
-						}
-
-					}
-					
+								
 					// removes guid from this region
 					leaving_guids.put(guid, region_guids.get(guid));
 					r.removeGuid(guid);
+					
+					if (!outgoing_regions.containsKey(r)) {
+						outgoing_regions.put(r, new ArrayList<Integer>());
+					}
+					outgoing_regions.get(r).add(guid);
 					
 				}
 				
@@ -1007,20 +1006,14 @@ public class Utilities {
 				}
 				
 				if (guid_belongs_to_this_region) { // if guid now belongs to this region
-					
-					if (mustCountMessages) {
-
-						// counts one message for each machine associated with this region
-						int num_machines = messagesCounterPerMachine.size();
-						int region_index = regions.indexOf(r)+1;
-						for (int machine = (int)((region_index-1)*Math.sqrt(num_machines))+1; machine <= (region_index*Math.sqrt(num_machines)); machine++) {
-							messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
-						}
-
-					}
-					
+								
 					// inserts guid into this region
 					r.insertGuid(guid, leaving_guids.get(guid));
+					
+					if (!incoming_regions.containsKey(r)) {
+						incoming_regions.put(r, new ArrayList<Integer>());
+					}
+					incoming_regions.get(r).add(guid);
 					
 					break;
 					
@@ -1029,6 +1022,39 @@ public class Utilities {
 			}
 			
 		}
+		
+		// III) Counts the number of messages per region 
+		for (Region r : regions) {
+			
+			int num_of_messages; // number of messages per region
+			
+			switch (countMessagesFlag) {
+			case 1:
+				num_of_messages = 0;
+				if (outgoing_regions.get(r).size() > 0)
+					num_of_messages += 1;
+				if (incoming_regions.get(r).size() > 0)
+					num_of_messages += 1;
+				break;
+			case 2:
+				num_of_messages = outgoing_regions.get(r).size() + incoming_regions.get(r).size();
+				break;
+			default:
+				num_of_messages = 0;
+				break;
+			}
+			
+			if (num_of_messages > 0) {
+				int num_machines = messagesCounterPerMachine.size();
+				int region_index = regions.indexOf(r)+1;
+				for (int machine = (int)((region_index-1)*Math.sqrt(num_machines))+1; machine <= (region_index*Math.sqrt(num_machines)); machine++) {
+					// increments the number of messages for each machine associated with this region
+					messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+num_of_messages);
+				}
+			}
+			
+		}
+		
 	}
 
 }

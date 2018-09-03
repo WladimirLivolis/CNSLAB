@@ -96,8 +96,8 @@ public class Main {
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Calculating no. of exchange messages because of a repartition...");
-				Utilities.checkGUIDsAfterRepartition(null, regions2, false);
-				Utilities.checkGUIDsAfterRepartition(hyperspace, regions3, true);
+				Utilities.checkGUIDsAfterRepartition(null, regions2, 0);
+				Utilities.checkGUIDsAfterRepartition(hyperspace, regions3, 1);
 				System.out.println("["+LocalTime.now()+"] Done!");
 
 				for (int machine = 1; machine <= num_machines; machine++) {
