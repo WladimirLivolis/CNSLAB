@@ -962,15 +962,17 @@ public class Utilities {
 					
 				}
 				
+				if (!outgoing_regions.containsKey(r))
+					outgoing_regions.put(r, new ArrayList<Integer>());
+				if (!incoming_regions.containsKey(r))
+					incoming_regions.put(r, new ArrayList<Integer>());
+				
 				if (!guid_belongs_to_this_region) { // if guid doesn't belong to this region anymore
 								
 					// removes guid from this region
 					leaving_guids.put(guid, region_guids.get(guid));
 					r.removeGuid(guid);
 					
-					if (!outgoing_regions.containsKey(r)) {
-						outgoing_regions.put(r, new ArrayList<Integer>());
-					}
 					outgoing_regions.get(r).add(guid);
 					
 				}
@@ -1010,9 +1012,6 @@ public class Utilities {
 					// inserts guid into this region
 					r.insertGuid(guid, leaving_guids.get(guid));
 					
-					if (!incoming_regions.containsKey(r)) {
-						incoming_regions.put(r, new ArrayList<Integer>());
-					}
 					incoming_regions.get(r).add(guid);
 					
 					break;
