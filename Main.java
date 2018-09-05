@@ -126,25 +126,6 @@ public class Main {
 		
 	}
 	
-	private static Map<Integer, Map<String, Double>> generateRandomIntervals(int qty, Random rnd) {
-		
-		Map<Integer, Map<String, Double>> intervals = new TreeMap<Integer, Map<String, Double>>();
-		
-		for (int i = 1; i <= qty; i++) {
-		
-			Map<String, Double> interval = new HashMap<String, Double>(2);
-			
-			interval.put("start", rnd.nextDouble());
-			interval.put("end", rnd.nextDouble());
-			
-			intervals.put(i, interval);
-		
-		}
-		
-		return intervals;
-		
-	}
-	
 	public static void main(String[] args) {
 		
 		int num_attr = 3;
@@ -155,10 +136,10 @@ public class Main {
 		int window_size = 33554432; // 2^25 observations (touches)
 		
 		String axis = "A1";
-		String dist = "uniform";
+		String dist = "normal";
 		String metric = "touches";
 		
-		double deviation = 0.15;
+		double deviation = 0.1;
 		double mean = 0.5;
 		double lambda = 1;
 		double low = 0;
@@ -193,19 +174,29 @@ public class Main {
 			sampleFileNames.add("./samples/testing_sample_"+i+"_"+LocalDateTime.now()+".json");
 		}
 		
-		Map<Integer, Map<String, Double>> intervals = generateRandomIntervals(numOfTestingSamples, new Random());
-		
 		/* GENERATING SAMPLES */
 		
 		System.out.println("["+LocalTime.now()+"] Generating training sample...");
 		Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(0), new Random());
 		System.out.println("["+LocalTime.now()+"] Done!");
+
+		// 4 random uniforms
+//		for (int i = 1; i <= numOfTestingSamples; i++) {
+//			Random rnd = new Random();
+//			double start = rnd.nextDouble(), end = rnd.nextDouble();
+//			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i+": Uniform ("+start+", "+end+")...");
+//			distParams.put("low", start);
+//			distParams.put("high", end);
+//			Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(i), rnd);
+//			System.out.println("["+LocalTime.now()+"] Done!");
+//		}
 		
+		// 4 normal distributions
 		for (int i = 1; i <= numOfTestingSamples; i++) {
-			double start = intervals.get(i).get("start"), end = intervals.get(i).get("end");
-			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i+": Uniform ("+start+", "+end+")...");
-			distParams.put("low", start);
-			distParams.put("high", end);
+			double new_mean = i*0.2;
+			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i+": Normal ("+new_mean+", "+deviation+")...");
+			distParams.put("mean", new_mean);
+			distParams.put("deviation", deviation);
 			Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, dist, distParams, sampleFileNames.get(i), new Random());
 			System.out.println("["+LocalTime.now()+"] Done!");
 		}

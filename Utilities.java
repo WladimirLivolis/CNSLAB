@@ -148,7 +148,7 @@ public class Utilities {
 		double val;
 		do {
 			val = Math.log(1-rnd.nextDouble())/(-lambda);
-		} while (val > 1);
+		} while (val < 0 || val > 1);
 		return val;
 	}
 	
