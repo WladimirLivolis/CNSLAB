@@ -107,6 +107,18 @@ public class Utilities {
 		return copy;
 	}
 	
+	public static List<Region> copyRegionsWithGUIDs(List<Region> regions) {
+		List<Region> copy = new ArrayList<Region>(regions.size());
+		for (Region r : regions) {
+			Region new_region = new Region(r.getName(), r.getPairs());
+			for (Map.Entry<Integer, Map<String, Double>> guid : r.getGUIDs().entrySet()) {
+				new_region.insertGuid(guid.getKey(), guid.getValue());
+			}
+			copy.add(new_region);
+		}
+		return copy;
+	}
+	
 	public static void copyRegionsRanges(List<Region> regionsWithRangesToBeSet, List<Region> regionsWithRangesToBeCopied) {
 		for (Region region : regionsWithRangesToBeSet) {
 			int regionIndex = regionsWithRangesToBeSet.indexOf(region);
@@ -828,17 +840,23 @@ public class Utilities {
 			if (op instanceof Update) { 
 
 				Update up = (Update)op;
-				int guid = up.getGuid();
 
 				for (Region r : regions) { // iterate over regions
 
 					// Checks whether this update is in this region regarding its attribute or its guid
-					boolean flag_attr = true, flag_guid = r.hasThisGuid(guid);
-
+					boolean flag_attr = true, flag_guid = true;
+										
 					for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
 						
-						String attrKey = attr.getKey();
-						double attrVal  = attr.getValue();
+						boolean isGUID = attr.getKey().contains("'");
+						
+						String attrKey;
+						if (isGUID) {
+							attrKey = attr.getKey().substring(0, attr.getKey().length()-1);
+						} else {
+							attrKey = attr.getKey();
+						}
+						double attrVal = attr.getValue();
 
 						if (r.getPairs().containsKey(attrKey)) { // check the region's range for this attribute
 
@@ -846,7 +864,11 @@ public class Utilities {
 							double region_high_range = r.getPairs().get(attrKey).getHigh();
 
 							if (attrVal < region_low_range || attrVal >= region_high_range) { // check whether attribute value is inside this region range
-								flag_attr = false;
+								if (isGUID) {
+									flag_guid = false;
+								} else {
+									flag_attr = false;
+								}
 							}
 
 						}
