@@ -165,7 +165,7 @@ public class Main {
 		int window_size = 33554432; // 2^25 observations (touches)
 		
 		String axis = "A1";
-		String dist = "normal";
+		String dist = "uniform";
 		String metric = "touches";
 		
 		double deviation = 0.1;
