@@ -297,11 +297,11 @@ public class Main {
 		ArrayList<Double> jfi_list_h5 = new ArrayList<Double>();
 		
 		System.out.println("["+LocalTime.now()+"] Calculating metric distribution per region...");
-		metricDistributionPerRegion(oplist, regions1, metric, "./heuristic1/heuristic1_dist_"+LocalTime.now()+".txt", jfi_list_h1);
-		metricDistributionPerRegion(oplist, regions2, metric, "./heuristic2/heuristic2_dist_"+LocalTime.now()+".txt", jfi_list_h2);
-		metricDistributionPerRegion(oplist, regions3, metric, "./heuristic3/heuristic3_dist_"+LocalTime.now()+".txt", jfi_list_h3);
-		metricDistributionPerRegion(oplist, regions4, metric, "./heuristic4/heuristic4_dist_"+LocalTime.now()+".txt", jfi_list_h4);
-		metricDistributionPerRegion(oplist, regions5, metric, "./heuristic5/heuristic5_dist_"+LocalTime.now()+".txt", jfi_list_h5);
+		metricDistributionPerRegion(oplist, regions1, metric, "./heuristic1/heuristic1_dist_"+LocalDateTime.now()+".txt", jfi_list_h1);
+		metricDistributionPerRegion(oplist, regions2, metric, "./heuristic2/heuristic2_dist_"+LocalDateTime.now()+".txt", jfi_list_h2);
+		metricDistributionPerRegion(oplist, regions3, metric, "./heuristic3/heuristic3_dist_"+LocalDateTime.now()+".txt", jfi_list_h3);
+		metricDistributionPerRegion(oplist, regions4, metric, "./heuristic4/heuristic4_dist_"+LocalDateTime.now()+".txt", jfi_list_h4);
+		metricDistributionPerRegion(oplist, regions5, metric, "./heuristic5/heuristic5_dist_"+LocalDateTime.now()+".txt", jfi_list_h5);
 		System.out.println("["+LocalTime.now()+"] Done!");
 				
 		/* TESTING HEURISTICS */
