@@ -337,24 +337,17 @@ public class Main {
 			pw_h5 = new PrintWriter("./output/heuristic5_jfi_"+LocalDateTime.now()+".txt");
 			
 			pw_h1.println("# repartitions\tJFI");
-			for (double jfi : jfi_list_h1) {
-				pw_h1.println((jfi_list_h1.indexOf(jfi)+1)+"\t"+jfi);
-			}
 			pw_h2.println("# repartitions\tJFI");
-			for (double jfi : jfi_list_h2) {
-				pw_h2.println((jfi_list_h2.indexOf(jfi)+1)+"\t"+jfi);
-			}
 			pw_h3.println("# repartitions\tJFI");
-			for (double jfi : jfi_list_h3) {
-				pw_h3.println((jfi_list_h3.indexOf(jfi)+1)+"\t"+jfi);
-			}
 			pw_h4.println("# repartitions\tJFI");
-			for (double jfi : jfi_list_h4) {
-				pw_h4.println((jfi_list_h4.indexOf(jfi)+1)+"\t"+jfi);
-			}
 			pw_h5.println("# repartitions\tJFI");
-			for (double jfi : jfi_list_h5) {
-				pw_h5.println((jfi_list_h5.indexOf(jfi)+1)+"\t"+jfi);
+			
+			for (int i = 0; i < jfi_list_h1.size(); i++) {
+				pw_h1.println((i+1)+"\t"+jfi_list_h1.get(i));
+				pw_h2.println((i+1)+"\t"+jfi_list_h2.get(i));
+				pw_h3.println((i+1)+"\t"+jfi_list_h3.get(i));
+				pw_h4.println((i+1)+"\t"+jfi_list_h4.get(i));
+				pw_h5.println((i+1)+"\t"+jfi_list_h5.get(i));
 			}
 			
 			pw_replicateAll = new PrintWriter("./output/replicateAll_"+LocalDateTime.now()+".txt");
