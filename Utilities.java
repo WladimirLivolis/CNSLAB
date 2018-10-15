@@ -196,7 +196,7 @@ public class Utilities {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static void generateOperations(int updateQty, int searchQty, int attrQty, int guidMaxQty, Map<Integer, Map<String, Double>> guids, String distribution, Map<String, Double> distParams, String fileName, Random rnd) {
+	public static void generateOperations(int updateQty, int searchQty, int attrQty, int guidMaxQty, Map<Integer, Map<String, Double>> guids, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, String fileName, Random rnd) {
 		
 		// Creates a JSONArray for operations
 		JSONArray operations = new JSONArray();
@@ -214,13 +214,13 @@ public class Utilities {
 			
 			if (update) {
 				newOperation.put("Id", "U"+(++numUpdates));
-				generateUpdate(attrQty, guidMaxQty, distribution, distParams, guids, newOperation, rnd);
+				generateUpdate(attrQty, guidMaxQty, distribution.get("update"), distParams.get("update"), guids, newOperation, rnd);
 				operations.add(newOperation);
 			} 
 			
 			if (search) {
 				newOperation.put("Id", "S"+(++numSearches));
-				generateSearch(attrQty, distribution, distParams, newOperation, rnd);
+				generateSearch(attrQty, distribution.get("search"), distParams.get("search"), newOperation, rnd);
 				operations.add(newOperation);
 			}
 			
@@ -244,7 +244,7 @@ public class Utilities {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static void generateUpdate(int attrQty, int guidMaxQty, String distribution, Map<String, Double> distParams, Map<Integer, Map<String, Double>> guids, JSONObject newOperation, Random rnd) {
+	private static void generateUpdate(int attrQty, int guidMaxQty, Map<Integer, String> distribution, Map<Integer, Map<String, Double>> distParams, Map<Integer, Map<String, Double>> guids, JSONObject newOperation, Random rnd) {
 				
 		int guid = rnd.nextInt(guidMaxQty) + 1;
 
@@ -273,7 +273,7 @@ public class Utilities {
 			updateAttrValPairs.add(pair);
 			
 			// new value for this attribute
-			double v = nextVal(distribution, distParams, rnd);
+			double v = nextVal(distribution.get(i), distParams.get(i), rnd);
 			
 			pair = new LinkedHashMap<String, Object>(2);
 			
@@ -293,15 +293,15 @@ public class Utilities {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static void generateSearch(int attrQty, String distribution, Map<String, Double> distParams, JSONObject newOperation, Random rnd) {
+	private static void generateSearch(int attrQty, Map<Integer, String> distribution, Map<Integer, Map<String, Double>> distParams, JSONObject newOperation, Random rnd) {
 		
 		// Creates a JSONArray for Attribute-Range Pairs
 		JSONArray searchAttrRangePairs = new JSONArray();
 		
 		for (int i = 1; i <= attrQty; i++) {
 			
-			double v1 = nextVal(distribution, distParams, rnd);
-			double v2 = nextVal(distribution, distParams, rnd);
+			double v1 = nextVal(distribution.get(i), distParams.get(i), rnd);
+			double v2 = nextVal(distribution.get(i), distParams.get(i), rnd);
 			
 			Map<String, Double> rangeMap = new LinkedHashMap<String, Double>(2);
 			
@@ -412,6 +412,42 @@ public class Utilities {
 		}
 
 		return operations;
+		
+	}
+	
+	/* For each type operation and for each attribute it picks a distribution and sets its parameters. */
+	public static void generateRandomDistribution(int num_attr, ArrayList<String> possibleDistributions, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+		
+		generateRandomDistributionAux("update", num_attr, possibleDistributions, distribution, distParams, rnd);
+		generateRandomDistributionAux("search", num_attr, possibleDistributions, distribution, distParams, rnd);
+		
+	}
+	
+	private static void generateRandomDistributionAux(String operation, int num_attr, ArrayList<String> possibleDistributions, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+		
+		Map<Integer, String> operationDist = new TreeMap<Integer, String>();
+		Map<Integer, Map<String, Double>> operationDistParams = new TreeMap<Integer, Map<String, Double>>();
+		for (int i = 1; i <= num_attr; i++) {
+			String dist = possibleDistributions.get(rnd.nextInt(3)).toLowerCase();
+			operationDist.put(i, dist);
+			Map<String, Double> attrDistParams = new HashMap<String, Double>();
+			if (dist.equals("uniform")) {
+				attrDistParams.put("low", rnd.nextDouble());
+				attrDistParams.put("high", rnd.nextDouble());
+			} else if (dist.equals("normal") || dist.equals("gaussian")) {
+				double deviation;
+				do { deviation = rnd.nextDouble(); } while (deviation == 0);
+				attrDistParams.put("deviation", deviation);
+				attrDistParams.put("mean", rnd.nextDouble());
+			} else if (dist.equals("exponential")) {
+				double lambda;
+				do { lambda = 2 * rnd.nextDouble(); } while (lambda == 0);
+				attrDistParams.put("lambda", lambda);
+			}
+			operationDistParams.put(i, attrDistParams);
+		}
+		distribution.put(operation, operationDist);
+		distParams.put(operation, operationDistParams);
 		
 	}
 	
