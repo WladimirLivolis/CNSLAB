@@ -113,5 +113,21 @@ public class Region {
 	public Map<Integer, Map<String, Double>> getGUIDs() {
 		return Collections.unmodifiableMap(GUIDs);
 	}
+	
+	public String toString() {
+		StringBuilder str = new StringBuilder(this.getName());
+		str.append(" = [ ");
+		for (Map.Entry<String, Range> pair : this.getPairs().entrySet()) {
+			str.append("(");
+			str.append(pair.getKey());
+			str.append(",[");
+			str.append(pair.getValue().getLow());
+			str.append(",");
+			str.append(pair.getValue().getHigh());
+			str.append(")) ");	
+		}
+		str.append("]");
+		return str.toString();
+	}
 
 }

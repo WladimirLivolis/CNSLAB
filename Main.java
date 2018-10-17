@@ -135,26 +135,6 @@ public class Main {
 		
 	}
 	
-	public static String printRegions(List<Region> regions) {
-		StringBuilder str = new StringBuilder("{ ");
-		for (Region region : regions) {
-			str.append(region.getName());
-			str.append(" = [ ");
-			for (Map.Entry<String, Range> pair : region.getPairs().entrySet()) {
-				str.append("(");
-				str.append(pair.getKey());
-				str.append(",[");
-				str.append(pair.getValue().getLow());
-				str.append(",");
-				str.append(pair.getValue().getHigh());
-				str.append("]) ");	
-			}
-			str.append("] ");
-		}
-		str.append("}");
-		return str.toString();
-	}
-	
 	public static void main(String[] args) {
 		
 		int num_attr = 3;
@@ -295,7 +275,7 @@ public class Main {
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 4 (Replicate All)...");
 		List<Region> regions4 = Utilities.buildNewRegions(num_attr);
-		System.out.println(printRegions(regions4));
+		System.out.println(Utilities.printRegions(regions4));
 		System.out.println("["+LocalTime.now()+"] Done!");
 		System.out.println("["+LocalTime.now()+"] Partitioning using Heuristic 5 (Query All)...");
 		List<Region> regions5 = new ArrayList<Region>();
@@ -311,7 +291,7 @@ public class Main {
 			Region region = new Region("R"+r, pairs);
 			regions5.add(region);
 		}
-		System.out.println(printRegions(regions5));
+		System.out.println(Utilities.printRegions(regions5));
 		System.out.println("["+LocalTime.now()+"] Done!");
 
 		

@@ -317,30 +317,10 @@ public class HeuristicV2 {
 				
 		regions = newRegions;
 		
-		System.out.println(printRegions());
+		System.out.println(Utilities.printRegions(regions));
 		
 		return Collections.unmodifiableList(regions);
 		
-	}
-	
-	public String printRegions() {
-		StringBuilder str = new StringBuilder("{ ");
-		for (Region region : regions) {
-			str.append(region.getName());
-			str.append(" = [ ");
-			for (Map.Entry<String, Range> pair : region.getPairs().entrySet()) {
-				str.append("(");
-				str.append(pair.getKey());
-				str.append(",[");
-				str.append(pair.getValue().getLow());
-				str.append(",");
-				str.append(pair.getValue().getHigh());
-				str.append("]) ");	
-			}
-			str.append("] ");
-		}
-		str.append("}");
-		return str.toString();
 	}
 	
 }

@@ -144,6 +144,16 @@ public class Utilities {
 		return regions;
 	}
 	
+	public static String printRegions(List<Region> regions) {
+		StringBuilder str = new StringBuilder("{ ");
+		for (Region region : regions) {
+			str.append(region.toString());
+			str.append(" ");
+		}
+		str.append("}");
+		return str.toString();
+	}
+	
 	private static double nextUniform(double low, double high, Random rnd) {
 		double val;
 		if (low > high) {
