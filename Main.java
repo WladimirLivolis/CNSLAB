@@ -144,7 +144,8 @@ public class Main {
 		int search_sample_size = 16384; // 2^14 operations
 		int window_size = 33554432; // 2^25 observations (touches)
 		
-		String axis = "A1";
+		String axis = args[0];
+//		String axis = "A1";
 		String dist = "uniform";
 		String metric = "touches";
 		
@@ -213,7 +214,7 @@ public class Main {
 		for (int i = 1; i <= numOfTestingSamples; i++) {
 			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i);
 			
-			Random rnd = new Random();
+			Random rnd = new Random(i);
 			
 			distribution = new HashMap<String, Map<Integer, String>>();
 			distParams = new HashMap<String, Map<Integer, Map<String, Double>>>();
@@ -294,7 +295,6 @@ public class Main {
 		System.out.println(Utilities.printRegions(regions5));
 		System.out.println("["+LocalTime.now()+"] Done!");
 
-		
 		ArrayList<Double> jfi_list_h1 = new ArrayList<Double>();
 		ArrayList<Double> jfi_list_h2 = new ArrayList<Double>();
 		ArrayList<Double> jfi_list_h3 = new ArrayList<Double>();
