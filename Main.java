@@ -232,11 +232,26 @@ public class Main {
 		// 4 random distributions
 		for (int i = 1; i <= numOfTestingSamples; i++) {
 			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i);
+			
 			Random rnd = new Random();
+			
 			distribution = new HashMap<String, Map<Integer, String>>();
 			distParams = new HashMap<String, Map<Integer, Map<String, Double>>>();
 			Utilities.generateRandomDistribution(num_attr, possibleDistributions, distribution, distParams, rnd);
+			
+			for (Map.Entry<String, Map<Integer, String>> op : distribution.entrySet()) {
+				System.out.println("Operation: "+op.getKey());
+				for (Map.Entry<Integer, String> attr : op.getValue().entrySet()) {
+					System.out.println("Attr: "+attr.getKey());
+					System.out.println("Dist: "+attr.getValue());
+					for (Map.Entry<String, Double> param : distParams.get(op.getKey()).get(attr.getKey()).entrySet()) {
+						System.out.println(param.getKey()+": "+param.getValue());
+					}
+				}
+			}
+			
 			Utilities.generateOperations(update_sample_size, search_sample_size, num_attr, num_max_guids, guids, distribution, distParams, sampleFileNames.get(i), rnd);
+			
 			System.out.println("["+LocalTime.now()+"] Done!");
 		}
 		

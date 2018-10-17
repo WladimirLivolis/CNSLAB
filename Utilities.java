@@ -415,21 +415,27 @@ public class Utilities {
 		
 	}
 	
-	/* For each type operation and for each attribute it picks a distribution and sets its parameters. */
+	/* Pick a distribution for each attribute, with different parameters for each operation. */
 	public static void generateRandomDistribution(int num_attr, ArrayList<String> possibleDistributions, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
 		
-		generateRandomDistributionAux("update", num_attr, possibleDistributions, distribution, distParams, rnd);
-		generateRandomDistributionAux("search", num_attr, possibleDistributions, distribution, distParams, rnd);
-		
-	}
-	
-	private static void generateRandomDistributionAux(String operation, int num_attr, ArrayList<String> possibleDistributions, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
-		
 		Map<Integer, String> operationDist = new TreeMap<Integer, String>();
-		Map<Integer, Map<String, Double>> operationDistParams = new TreeMap<Integer, Map<String, Double>>();
 		for (int i = 1; i <= num_attr; i++) {
 			String dist = possibleDistributions.get(rnd.nextInt(3)).toLowerCase();
 			operationDist.put(i, dist);
+		}
+		distribution.put("update", operationDist);
+		distribution.put("search", operationDist);
+		
+		generateRandomDistributionAux("update", num_attr, distribution, distParams, rnd);
+		generateRandomDistributionAux("search", num_attr, distribution, distParams, rnd);
+		
+	}
+	
+	private static void generateRandomDistributionAux(String operation, int num_attr, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+		
+		Map<Integer, Map<String, Double>> operationDistParams = new TreeMap<Integer, Map<String, Double>>();
+		for (int i = 1; i <= num_attr; i++) {
+			String dist = distribution.get(operation).get(i);
 			Map<String, Double> attrDistParams = new HashMap<String, Double>();
 			if (dist.equals("uniform")) {
 				attrDistParams.put("low", rnd.nextDouble());
@@ -446,7 +452,6 @@ public class Utilities {
 			}
 			operationDistParams.put(i, attrDistParams);
 		}
-		distribution.put(operation, operationDist);
 		distParams.put(operation, operationDistParams);
 		
 	}
