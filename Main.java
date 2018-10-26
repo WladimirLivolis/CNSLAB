@@ -214,7 +214,7 @@ public class Main {
 		for (int i = 1; i <= numOfTestingSamples; i++) {
 			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i);
 			
-			Random rnd = new Random(i);
+			Random rnd = new Random(Integer.parseInt(args[1]));
 			
 			distribution = new HashMap<String, Map<Integer, String>>();
 			distParams = new HashMap<String, Map<Integer, Map<String, Double>>>();
