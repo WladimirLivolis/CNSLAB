@@ -15,6 +15,10 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
+import com.google.common.hash.HashCode;
+import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
+
 public class Utilities {
 	
 	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. *
@@ -96,6 +100,39 @@ public class Utilities {
 						
 		double JFI = ( RHO * JS ) + ( (1 - RHO) * JU );
 		
+		return JFI;
+	}
+	
+	public static double JFI(Queue<Operation> oplist, List<Machine> mlist) {
+		
+		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0;
+		
+		checkTouchesPerMachine(mlist, oplist);
+		
+		for (Machine m : mlist) {
+			up_touches += m.getUpdateTouches();
+			s_touches += m.getSearchTouches();
+			upsquare += Math.pow(m.getUpdateTouches(), 2);
+			ssquare += Math.pow(m.getSearchTouches(), 2);
+		}
+		
+		double JU = 0.0, JS = 0.0;
+		
+		if (up_touches != 0)
+			JU = Math.pow(up_touches, 2) / ( mlist.size() * upsquare );
+		
+		if (s_touches != 0)
+			JS = Math.pow(s_touches , 2) / ( mlist.size() * ssquare  );
+								
+		int num_searches = 0;
+		for (Operation op : oplist)
+			if (op instanceof Search)
+				num_searches++;
+								
+		double RHO = (double) num_searches / oplist.size();
+						
+		double JFI = ( RHO * JS ) + ( (1 - RHO) * JU );
+	
 		return JFI;
 	}
 	
@@ -436,12 +473,12 @@ public class Utilities {
 		distribution.put("update", operationDist);
 		distribution.put("search", operationDist);
 		
-		generateRandomDistributionAux("update", num_attr, distribution, distParams, rnd);
-		generateRandomDistributionAux("search", num_attr, distribution, distParams, rnd);
+		_generateRandomDistribution("update", num_attr, distribution, distParams, rnd);
+		_generateRandomDistribution("search", num_attr, distribution, distParams, rnd);
 		
 	}
 	
-	private static void generateRandomDistributionAux(String operation, int num_attr, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+	private static void _generateRandomDistribution(String operation, int num_attr, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
 		
 		Map<Integer, Map<String, Double>> operationDistParams = new TreeMap<Integer, Map<String, Double>>();
 		for (int i = 1; i <= num_attr; i++) {
@@ -772,8 +809,97 @@ public class Utilities {
 		
 	}
 	
-	/* Computes and returns the number of exchange messages between the controller and each machine when adopting replicate all strategy */
-	public static Map<Integer, Integer> messagesCounterReplicateAll(int num_machines, Queue<Operation> oplist) {
+	public static void checkTouchesPerMachine(List<Machine> machines, Queue<Operation> oplist) {
+		
+		clear_machines_touches(machines);
+		
+		for (Operation op : oplist) {
+			
+			if (op instanceof Update) {	checkUpdateTouchesPerMachine(machines, (Update)op); }
+			
+			if (op instanceof Search) {	checkSearchTouchesPerMachine(machines, (Search)op); }
+			
+		}
+		
+	}
+	
+	private static void checkUpdateTouchesPerMachine(List<Machine> machines, Update up) {
+		
+		int guid = up.getGuid();
+		
+		// uses consistent hashing to find the machine associated with this guid
+		HashFunction hf = Hashing.sha256();
+		HashCode hc = hf.newHasher().putInt(guid).hash();
+		int machine_index = Hashing.consistentHash(hc, machines.size());
+		Machine machine = machines.get(machine_index);
+		
+		// updates this GUID's attributes with info from this update operation
+		Map<String, Double> guid_attr = new HashMap<String, Double>();
+		for (Map.Entry<String, Double> up_attr : up.getAttributes().entrySet()) {
+			if (up_attr.getKey().contains("'")) { continue; } // ignore attributes ending with ', as it's old info
+			guid_attr.put(up_attr.getKey(), up_attr.getValue());
+		}
+		machine.insertGuid(guid, guid_attr); // adds it to this machines's guid list
+		
+		// counts one touch
+		int previous_count = machine.getUpdateTouches();
+		machine.setUpdateTouches(previous_count+1);
+		
+	}
+	
+	private static void checkSearchTouchesPerMachine(List<Machine> machines, Search s) {
+		
+		for (Machine m : machines) { // iterate over all machines
+			
+			int count = 0;
+			
+			for (Map.Entry<Integer, Map<String, Double>> guid : m.getGUIDs().entrySet()) { // iterate over this machine's guids
+				
+				boolean flag = true;
+
+				for (Map.Entry<String, Double> attr : guid.getValue().entrySet()) { // iterate over this guid's attributes
+
+					String guidAttrKey = attr.getKey();    
+					double guidAttrVal = attr.getValue();
+
+					if (s.getPairs().containsKey(guidAttrKey)) { // check the search range for this attribute
+					
+						double searchRangeStart = s.getPairs().get(guidAttrKey).getLow();
+						double searchRangeEnd   = s.getPairs().get(guidAttrKey).getHigh();
+
+						if (searchRangeStart > searchRangeEnd) {
+							if (guidAttrVal < searchRangeStart && guidAttrVal > searchRangeEnd) { flag = false; break; }
+						} else {
+							if (guidAttrVal < searchRangeStart || guidAttrVal > searchRangeEnd) { flag = false; break; }
+						}
+					}
+
+				}
+
+				if (flag) { count++; }
+				
+			}
+			
+			// Sets this machine's search touch counter
+			int previous_count = m.getSearchTouches();
+			m.setSearchTouches(previous_count+count);
+			
+		}
+		
+	}
+	
+	private static void clear_machines_touches(List<Machine> machines) {
+		
+		for (Machine m : machines) {
+			m.setSearchTouches(0);
+			m.setUpdateTouches(0);
+		}
+		
+	}
+	
+	
+	/* Computes and returns the number of exchange messages between the controller and each machine when adopting replicate-at-all strategy */
+	public static Map<Integer, Integer> messagesCounterReplicateAtAll(int num_machines, Queue<Operation> oplist) {
 
 		Map<Integer, Integer> messagesCounterPerMachine = new TreeMap<Integer, Integer>();
 
@@ -807,7 +933,7 @@ public class Utilities {
 
 	}
 	
-	/* Computes and returns the number of exchange messages between the controller and each machine when adopting query all strategy */
+	/* Computes and returns the number of exchange messages between the controller and each machine when adopting query-all strategy */
 	public static Map<Integer, Integer> messagesCounterQueryAll(int num_machines, String axis, Queue<Operation> oplist) {
 
 		Map<Integer, Integer> messagesCounterPerMachine = new TreeMap<Integer, Integer>();
@@ -822,49 +948,20 @@ public class Utilities {
 			if (op instanceof Update) { // controller sends a message to one specific machine
 
 				Update up = (Update)op;
+				int guid = up.getGuid();
+				
+				// uses consistent hashing to find the machine associated with this guid
+				HashFunction hf = Hashing.sha256();
+				HashCode hc = hf.newHasher().putInt(guid).hash();
+				int machine_index = Hashing.consistentHash(hc, num_machines);
+				
+				messagesCounterPerMachine.put(machine_index+1, messagesCounterPerMachine.get(machine_index+1)+1);
 
-				double up_val = up.getAttributes().get(axis);
-				double guid_val = up.getAttributes().get(axis+"'");
+			} else if (op instanceof Search) { // controller sends messages to all machines
+				
+				for (Map.Entry<Integer, Integer> e : messagesCounterPerMachine.entrySet()) {
 
-				for (int i = 1; i <= num_machines; i++) {
-
-					double low = (i-1)/(double)num_machines, high = i/(double)num_machines;
-					if ((up_val >= low && up_val < high) || (guid_val >= low && guid_val < high)) {
-						messagesCounterPerMachine.put(i, messagesCounterPerMachine.get(i)+1);
-					}
-
-				}
-
-			} else if (op instanceof Search) { // controller sends messages up to num_machines machines
-
-				Search s = (Search)op;
-
-				double search_low_range  = s.getPairs().get(axis).getLow();
-				double search_high_range = s.getPairs().get(axis).getHigh();
-
-				if (search_low_range > search_high_range) {
-
-					for (int i = 1; i <= num_machines; i++) {
-
-						double machine_low_range = (i-1)/(double)num_machines, machine_high_range = i/(double)num_machines;
-						boolean flag = true;
-
-						if (search_low_range >= machine_high_range && search_high_range < machine_low_range) { flag = false; }
-						if (flag) {	messagesCounterPerMachine.put(i, messagesCounterPerMachine.get(i)+1); }
-
-					}
-
-				} else {
-
-					for (int i = 1; i <= num_machines; i++) {
-
-						double machine_low_range = (i-1)/(double)num_machines, machine_high_range = i/(double)num_machines;
-						boolean flag = true;
-
-						if (search_low_range >= machine_high_range || search_high_range < machine_low_range) { flag = false; }
-						if (flag) { messagesCounterPerMachine.put(i, messagesCounterPerMachine.get(i)+1); }	
-
-					}
+					messagesCounterPerMachine.put(e.getKey(), e.getValue()+1);
 
 				}
 
