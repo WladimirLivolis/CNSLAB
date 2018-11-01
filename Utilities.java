@@ -473,12 +473,12 @@ public class Utilities {
 		distribution.put("update", operationDist);
 		distribution.put("search", operationDist);
 		
-		generateRandomDistributionAux("update", num_attr, distribution, distParams, rnd);
-		generateRandomDistributionAux("search", num_attr, distribution, distParams, rnd);
+		_generateRandomDistribution("update", num_attr, distribution, distParams, rnd);
+		_generateRandomDistribution("search", num_attr, distribution, distParams, rnd);
 		
 	}
 	
-	private static void generateRandomDistributionAux(String operation, int num_attr, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+	private static void _generateRandomDistribution(String operation, int num_attr, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
 		
 		Map<Integer, Map<String, Double>> operationDistParams = new TreeMap<Integer, Map<String, Double>>();
 		for (int i = 1; i <= num_attr; i++) {
@@ -827,7 +827,7 @@ public class Utilities {
 		
 		int guid = up.getGuid();
 		
-		// calculates the consistent hash to find the machine associated with this guid
+		// uses consistent hashing to find the machine associated with this guid
 		HashFunction hf = Hashing.sha256();
 		HashCode hc = hf.newHasher().putInt(guid).hash();
 		int machine_index = Hashing.consistentHash(hc, machines.size());
@@ -898,8 +898,8 @@ public class Utilities {
 	}
 	
 	
-	/* Computes and returns the number of exchange messages between the controller and each machine when adopting replicate all strategy */
-	public static Map<Integer, Integer> messagesCounterReplicateAll(int num_machines, Queue<Operation> oplist) {
+	/* Computes and returns the number of exchange messages between the controller and each machine when adopting replicate-at-all strategy */
+	public static Map<Integer, Integer> messagesCounterReplicateAtAll(int num_machines, Queue<Operation> oplist) {
 
 		Map<Integer, Integer> messagesCounterPerMachine = new TreeMap<Integer, Integer>();
 
@@ -933,7 +933,7 @@ public class Utilities {
 
 	}
 	
-	/* Computes and returns the number of exchange messages between the controller and each machine when adopting query all strategy */
+	/* Computes and returns the number of exchange messages between the controller and each machine when adopting query-all strategy */
 	public static Map<Integer, Integer> messagesCounterQueryAll(int num_machines, String axis, Queue<Operation> oplist) {
 
 		Map<Integer, Integer> messagesCounterPerMachine = new TreeMap<Integer, Integer>();
@@ -948,18 +948,14 @@ public class Utilities {
 			if (op instanceof Update) { // controller sends a message to one specific machine
 
 				Update up = (Update)op;
-
-				double up_val = up.getAttributes().get(axis);
-				double guid_val = up.getAttributes().get(axis+"'");
-
-				for (int i = 1; i <= num_machines; i++) {
-
-					double low = (i-1)/(double)num_machines, high = i/(double)num_machines;
-					if ((up_val >= low && up_val < high) || (guid_val >= low && guid_val < high)) {
-						messagesCounterPerMachine.put(i, messagesCounterPerMachine.get(i)+1);
-					}
-
-				}
+				int guid = up.getGuid();
+				
+				// uses consistent hashing to find the machine associated with this guid
+				HashFunction hf = Hashing.sha256();
+				HashCode hc = hf.newHasher().putInt(guid).hash();
+				int machine_index = Hashing.consistentHash(hc, num_machines);
+				
+				messagesCounterPerMachine.put(machine_index+1, messagesCounterPerMachine.get(machine_index+1)+1);
 
 			} else if (op instanceof Search) { // controller sends messages to all machines
 				
@@ -967,38 +963,7 @@ public class Utilities {
 
 					messagesCounterPerMachine.put(e.getKey(), e.getValue()+1);
 
-				}			
-
-//				Search s = (Search)op;
-//
-//				double search_low_range  = s.getPairs().get(axis).getLow();
-//				double search_high_range = s.getPairs().get(axis).getHigh();
-//
-//				if (search_low_range > search_high_range) {
-//
-//					for (int i = 1; i <= num_machines; i++) {
-//
-//						double machine_low_range = (i-1)/(double)num_machines, machine_high_range = i/(double)num_machines;
-//						boolean flag = true;
-//
-//						if (search_low_range >= machine_high_range && search_high_range < machine_low_range) { flag = false; }
-//						if (flag) {	messagesCounterPerMachine.put(i, messagesCounterPerMachine.get(i)+1); }
-//
-//					}
-//
-//				} else {
-//
-//					for (int i = 1; i <= num_machines; i++) {
-//
-//						double machine_low_range = (i-1)/(double)num_machines, machine_high_range = i/(double)num_machines;
-//						boolean flag = true;
-//
-//						if (search_low_range >= machine_high_range || search_high_range < machine_low_range) { flag = false; }
-//						if (flag) { messagesCounterPerMachine.put(i, messagesCounterPerMachine.get(i)+1); }	
-//
-//					}
-//
-//				}
+				}
 
 			}
 

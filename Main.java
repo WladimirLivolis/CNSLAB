@@ -117,7 +117,7 @@ public class Main {
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Calculating no. of exchange messages between controller and each machine...");
-				Map<Integer, Integer> replicateAll = Utilities.messagesCounterReplicateAll(num_machines, suboplist);
+				Map<Integer, Integer> replicateAll = Utilities.messagesCounterReplicateAtAll(num_machines, suboplist);
 				Map<Integer, Integer> queryAll = Utilities.messagesCounterQueryAll(num_machines, axis, suboplist);
 				Map<Integer, Integer> hyperspace0 = Utilities.messagesCounterHyperspace(num_machines, suboplist, regions3);
 				Map<Integer, Integer> hyperspace1 = Utilities.messagesCounterHyperspace(num_machines, suboplist, regions3);
@@ -180,8 +180,8 @@ public class Main {
 		int search_sample_size = 16384; // 2^14 operations
 		int window_size = 33554432; // 2^25 observations (touches)
 		
-		String axis = args[0];
-//		String axis = "A1";
+//		String axis = args[0];
+		String axis = "A1";
 		String dist = "uniform";
 		String metric = "touches";
 		
@@ -311,9 +311,9 @@ public class Main {
 		List<Region> regions3 = new ArrayList<Region>();
 		regions3.addAll(heuristic3.partitionGK());
 		System.out.println("["+LocalTime.now()+"] Done!");
-		// Heuristic 4 (Replicate All)
+		// Heuristic 4 (Replicate-At-All)
 		List<Region> regions4 = Utilities.buildNewRegions(num_attr);
-		// Heuristic 5 (QUery All)
+		// Heuristic 5 (QUery-All)
 		List<Machine> machines5 = new ArrayList<Machine>();
 		for (int i = 1; i <= num_mach; i++) { machines5.add(new Machine("machine"+i)); }
 
