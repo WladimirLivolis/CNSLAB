@@ -27,7 +27,7 @@ public class HeuristicV1_5 {
 		partition_(2, regions, rangeList1);
 		partition_(2, regions, rangeList2);
 		
-		System.out.println(Utilities.printRegions(regions));
+//		System.out.println(Utilities.printRegions(regions));
 		
 		return Collections.unmodifiableList(regions);
 	
