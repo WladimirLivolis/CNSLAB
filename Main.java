@@ -13,9 +13,9 @@ import java.util.TreeMap;
 
 public class Main {
 	
-	private static void metricDistributionPerRegion(Queue<Operation> oplist, List<Region> regions, String metric, String fileName, ArrayList<Double> jfiList) {
+	private static void metricDistributionPerRegion(Queue<Operation> oplist, List<Region> regions, String fileName, Map<String, List<Double>> jfiList) {
 		
-		double jfi = Utilities.JFI(metric, oplist, regions);
+		Map<String, Double> jfi = Utilities.JFI_touches_and_guids(oplist, regions);
 		
 		PrintWriter pw = null;
 		
@@ -23,27 +23,27 @@ public class Main {
 			
 			pw = new PrintWriter(fileName);
 			
-			pw.println("# region\tmetric");
+			pw.println("region\ttouches\t# GUIDs");
 			
 			for (Region r : regions) {
 				
 				int index = regions.indexOf(r)+1;
+					
+				double touches = r.getUpdateTouches()+r.getSearchTouches();
+				double guids = r.getGUIDs().size();
 				
-				double metricValue = -1;
-				
-				if (metric.toLowerCase().equals("touches")) {
-					metricValue = r.getUpdateTouches()+r.getSearchTouches();
-				} else if (metric.toLowerCase().equals("load")) {
-					metricValue = r.getUpdateLoad()+r.getSearchLoad();
-				}
-				
-				pw.println(index+"\t"+metricValue);
+				pw.println(index+"\t"+touches+"\t"+guids);
 				
 			}
 			
+			double jfi_touches = jfi.get("touches");
+			double jfi_guids = jfi.get("guids");
+						
 			pw.println();
-			pw.print("JFI: "+jfi);
-			jfiList.add(jfi);
+			pw.println("JFI (touches): "+jfi_touches);
+			pw.print("JFI (guids): "+jfi_guids);
+			jfiList.get("touches").add(jfi_touches);
+			jfiList.get("guids").add(jfi_guids);
 			
 		} catch (FileNotFoundException err) { 
 			err.printStackTrace(); 
@@ -53,9 +53,9 @@ public class Main {
 		
 	}
 	
-	private static void metricDistributionPerMachine(Queue<Operation> oplist, List<Machine> machines, String fileName, ArrayList<Double> jfiList) {
+	private static void metricDistributionPerMachine(Queue<Operation> oplist, List<Machine> machines, String fileName, Map<String, List<Double>> jfiList) {
 		
-		double jfi = Utilities.JFI(oplist, machines);
+		Map<String, Double> jfi = Utilities.JFI(oplist, machines);
 		
 		PrintWriter pw = null;
 		
@@ -63,23 +63,27 @@ public class Main {
 			
 			pw = new PrintWriter(fileName);
 			
-			pw.println("# machine\tmetric");
+			pw.println("machine\ttouches\t# GUIDs");
 			
 			for (Machine m : machines) {
 				
 				int index = machines.indexOf(m)+1;
+								
+				double touches = m.getUpdateTouches()+m.getSearchTouches();
+				double guids = m.getGUIDs().size();
 				
-				double metricValue = -1;
-				
-				metricValue = m.getUpdateTouches()+m.getSearchTouches();
-				
-				pw.println(index+"\t"+metricValue);
+				pw.println(index+"\t"+touches+"\t"+guids);
 				
 			}
 			
+			double jfi_touches = jfi.get("touches");
+			double jfi_guids = jfi.get("guids");
+			
 			pw.println();
-			pw.print("JFI: "+jfi);
-			jfiList.add(jfi);
+			pw.println("JFI (touches): "+jfi_touches);
+			pw.print("JFI (guids): "+jfi_guids);
+			jfiList.get("touches").add(jfi_touches);
+			jfiList.get("guids").add(jfi_guids);
 			
 		} catch (FileNotFoundException err) { 
 			err.printStackTrace(); 
@@ -89,7 +93,7 @@ public class Main {
 		
 	}
 	
-	private static void testHeuristicsAgainstNewOperations(String sampleFile, boolean windowIsFull, Queue<Operation> op_window, List<Region> regions1, List<Region> regions2, List<Region> regions3, List<Region> regions4, List<Machine> machines5, List<Region> regions6, HeuristicV1 heuristic1, HeuristicV2 heuristic2, HeuristicV3 heuristic3, ArrayList<Double> jfi_list_h1, ArrayList<Double> jfi_list_h2, ArrayList<Double> jfi_list_h3, ArrayList<Double> jfi_list_h4, ArrayList<Double> jfi_list_h5, ArrayList<Double> jfi_list_h6, String metric, int num_machines, String axis, Map<Integer, Integer> messagesPerMachineReplicateAll, Map<Integer, Integer> messagesPerMachineQueryAll, Map<Integer, Integer> messagesPerMachineHyperspace0, Map<Integer, Integer> messagesPerMachineHyperspace1, Map<Integer, Integer> messagesPerMachineHyperspace2) {
+	private static void testHeuristicsAgainstNewOperations(String sampleFile, boolean windowIsFull, Queue<Operation> op_window, List<Region> regions1, List<Region> regions2, List<Region> regions3, List<Region> regions4, List<Machine> machines5, List<Region> regions6, HeuristicV1 heuristic1, HeuristicV2 heuristic2, HeuristicV3 heuristic3, Map<String, List<Double>> jfi_list_h1, Map<String, List<Double>> jfi_list_h2, Map<String, List<Double>> jfi_list_h3, Map<String, List<Double>> jfi_list_h4, Map<String, List<Double>> jfi_list_h5, Map<String, List<Double>> jfi_list_h6, int num_machines, String axis, Map<Integer, Integer> messagesPerMachineReplicateAll, Map<Integer, Integer> messagesPerMachineQueryAll, Map<Integer, Integer> messagesPerMachineHyperspace0, Map<Integer, Integer> messagesPerMachineHyperspace1, Map<Integer, Integer> messagesPerMachineHyperspace2, Map<Integer, Integer> messagesPerMachineHyperdex, Map<Integer, Integer> messagesPerMachineCNS) {
 		
 		// Reading operations from testing sample
 		System.out.println("["+LocalTime.now()+"] Reading testing sample file...");
@@ -110,12 +114,12 @@ public class Main {
 				numberOfObservationsSeenSoFar = heuristic3.numberOfObservationsSeenSoFar();
 				
 				System.out.println("["+LocalTime.now()+"] Calculating metric distribution per region...");
-				metricDistributionPerRegion(suboplist, regions1, metric, "./heuristic1/heuristic1_dist_"+LocalDateTime.now()+".txt", jfi_list_h1);
-				metricDistributionPerRegion(suboplist, regions2, metric, "./heuristic2/heuristic2_dist_"+LocalDateTime.now()+".txt", jfi_list_h2);
-				metricDistributionPerRegion(suboplist, regions3, metric, "./heuristic3/heuristic3_dist_"+LocalDateTime.now()+".txt", jfi_list_h3);
-				metricDistributionPerRegion(suboplist, regions4, metric, "./heuristic4/heuristic4_dist_"+LocalDateTime.now()+".txt", jfi_list_h4);
+				metricDistributionPerRegion(suboplist, regions1, "./heuristic1/heuristic1_dist_"+LocalDateTime.now()+".txt", jfi_list_h1);
+				metricDistributionPerRegion(suboplist, regions2, "./heuristic2/heuristic2_dist_"+LocalDateTime.now()+".txt", jfi_list_h2);
+				metricDistributionPerRegion(suboplist, regions3, "./heuristic3/heuristic3_dist_"+LocalDateTime.now()+".txt", jfi_list_h3);
+				metricDistributionPerRegion(suboplist, regions4, "./heuristic4/heuristic4_dist_"+LocalDateTime.now()+".txt", jfi_list_h4);
 				metricDistributionPerMachine(suboplist, machines5, "./heuristic5/heuristic5_dist_"+LocalDateTime.now()+".txt", jfi_list_h5);
-				metricDistributionPerRegion(suboplist, regions6, metric, "./heuristic6/heuristic6_dist_"+LocalDateTime.now()+".txt", jfi_list_h6);
+				metricDistributionPerRegion(suboplist, regions6, "./heuristic6/heuristic6_dist_"+LocalDateTime.now()+".txt", jfi_list_h6);
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Calculating no. of exchange messages between controller and each machine...");
@@ -124,6 +128,8 @@ public class Main {
 				Map<Integer, Integer> hyperspace0 = Utilities.messagesCounterHyperspace(num_machines, suboplist, regions3);
 				Map<Integer, Integer> hyperspace1 = Utilities.messagesCounterHyperspace(num_machines, suboplist, regions3);
 				Map<Integer, Integer> hyperspace2 = Utilities.messagesCounterHyperspace(num_machines, suboplist, regions3);
+				Map<Integer, Integer> hyperdex = Utilities.messagesCounterHyperspace(num_machines, suboplist, regions6);
+				Map<Integer, Integer> cns = Utilities.messagesCounterHyperspace(num_machines, suboplist, regions1);
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 1...");
@@ -151,6 +157,8 @@ public class Main {
 					messagesPerMachineHyperspace0.put(machine, messagesPerMachineHyperspace0.get(machine)+hyperspace0.get(machine));
 					messagesPerMachineHyperspace1.put(machine, messagesPerMachineHyperspace1.get(machine)+hyperspace1.get(machine));
 					messagesPerMachineHyperspace2.put(machine, messagesPerMachineHyperspace2.get(machine)+hyperspace2.get(machine));
+					messagesPerMachineHyperdex.put(machine, messagesPerMachineHyperdex.get(machine)+hyperdex.get(machine));
+					messagesPerMachineCNS.put(machine, messagesPerMachineCNS.get(machine)+cns.get(machine));
 				}
 				
 				suboplist = new LinkedList<Operation>();
@@ -283,24 +291,45 @@ public class Main {
 				
 		/* TESTING HEURISTICS */
 		
-		ArrayList<Double> jfi_list_h1 = new ArrayList<Double>();
-		ArrayList<Double> jfi_list_h2 = new ArrayList<Double>();
-		ArrayList<Double> jfi_list_h3 = new ArrayList<Double>();
-		ArrayList<Double> jfi_list_h4 = new ArrayList<Double>();
-		ArrayList<Double> jfi_list_h5 = new ArrayList<Double>();
-		ArrayList<Double> jfi_list_h6 = new ArrayList<Double>();
+		Map<String, List<Double>> jfi_list_h1 = new HashMap<String, List<Double>>();
+		jfi_list_h1.put("touches", new ArrayList<Double>());
+		jfi_list_h1.put("guids", new ArrayList<Double>());
+		
+		Map<String, List<Double>> jfi_list_h2 = new HashMap<String, List<Double>>();
+		jfi_list_h2.put("touches", new ArrayList<Double>());
+		jfi_list_h2.put("guids", new ArrayList<Double>());
+		
+		Map<String, List<Double>> jfi_list_h3 = new HashMap<String, List<Double>>();
+		jfi_list_h3.put("touches", new ArrayList<Double>());
+		jfi_list_h3.put("guids", new ArrayList<Double>());
+		
+		Map<String, List<Double>> jfi_list_h4 = new HashMap<String, List<Double>>();
+		jfi_list_h4.put("touches", new ArrayList<Double>());
+		jfi_list_h4.put("guids", new ArrayList<Double>());
+		
+		Map<String, List<Double>> jfi_list_h5 = new HashMap<String, List<Double>>();
+		jfi_list_h5.put("touches", new ArrayList<Double>());
+		jfi_list_h5.put("guids", new ArrayList<Double>());
+		
+		Map<String, List<Double>> jfi_list_h6 = new HashMap<String, List<Double>>();
+		jfi_list_h6.put("touches", new ArrayList<Double>());
+		jfi_list_h6.put("guids", new ArrayList<Double>());
 		
 		Map<Integer, Integer> messagesPerMachineReplicateAll = new TreeMap<Integer, Integer>();		
 		Map<Integer, Integer> messagesPerMachineQueryAll = new TreeMap<Integer, Integer>();
 		Map<Integer, Integer> messagesPerMachineHyperspace0 = new TreeMap<Integer, Integer>();
 		Map<Integer, Integer> messagesPerMachineHyperspace1 = new TreeMap<Integer, Integer>();
 		Map<Integer, Integer> messagesPerMachineHyperspace2 = new TreeMap<Integer, Integer>();
+		Map<Integer, Integer> messagesPerMachineHyperdex = new TreeMap<Integer, Integer>();
+		Map<Integer, Integer> messagesPerMachineCNS = new TreeMap<Integer, Integer>();
 		for (int machine = 1; machine <= num_mach; machine++) {
 			messagesPerMachineReplicateAll.put(machine, 0);
 			messagesPerMachineQueryAll.put(machine, 0);
 			messagesPerMachineHyperspace0.put(machine, 0);
 			messagesPerMachineHyperspace1.put(machine, 0);
 			messagesPerMachineHyperspace2.put(machine, 0);
+			messagesPerMachineHyperdex.put(machine, 0);
+			messagesPerMachineCNS.put(machine, 0);
 		}
 		
 		Queue<Operation> op_window = new LinkedList<Operation>();
@@ -310,11 +339,11 @@ public class Main {
 		// tests heuristics
 		for (int i = 1; i <= numOfEpochs; i++) {
 			if (i > 1) { windowIsFull = true; }
-			testHeuristicsAgainstNewOperations(sampleFileNames.get(i-1), windowIsFull, op_window, regions1, regions2, regions3, regions4, machines5, regions6, heuristic1, heuristic2, heuristic3, jfi_list_h1, jfi_list_h2, jfi_list_h3, jfi_list_h4, jfi_list_h5, jfi_list_h6, metric, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace0, messagesPerMachineHyperspace1, messagesPerMachineHyperspace2);
+			testHeuristicsAgainstNewOperations(sampleFileNames.get(i-1), windowIsFull, op_window, regions1, regions2, regions3, regions4, machines5, regions6, heuristic1, heuristic2, heuristic3, jfi_list_h1, jfi_list_h2, jfi_list_h3, jfi_list_h4, jfi_list_h5, jfi_list_h6, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace0, messagesPerMachineHyperspace1, messagesPerMachineHyperspace2, messagesPerMachineHyperdex, messagesPerMachineCNS);
 		}
 		
 		// Writes log files to generate graphs with gnuplot
-		PrintWriter pw_h1 = null, pw_h2 = null, pw_h3 = null, pw_h4 = null, pw_h5 = null, pw_h6 = null, pw_replicateAll = null, pw_queryAll = null, pw_hyperspace0 = null, pw_hyperspace1 = null, pw_hyperspace2 = null;
+		PrintWriter pw_h1 = null, pw_h2 = null, pw_h3 = null, pw_h4 = null, pw_h5 = null, pw_h6 = null, pw_replicateAll = null, pw_queryAll = null, pw_hyperspace0 = null, pw_hyperspace1 = null, pw_hyperspace2 = null, pw_hyperdex = null, pw_cns = null;
 		
 		try {
 			
@@ -325,20 +354,20 @@ public class Main {
 			pw_h5 = new PrintWriter("./output/heuristic5_jfi_"+LocalDateTime.now()+".txt");
 			pw_h6 = new PrintWriter("./output/heuristic6_jfi_"+LocalDateTime.now()+".txt");
 			
-			pw_h1.println("# repartitions\tJFI");
-			pw_h2.println("# repartitions\tJFI");
-			pw_h3.println("# repartitions\tJFI");
-			pw_h4.println("# repartitions\tJFI");
-			pw_h5.println("# repartitions\tJFI");
-			pw_h6.println("# repartitions\tJFI");
+			pw_h1.println("repartition\tJFI (touches)\tJFI (guids)");
+			pw_h2.println("repartition\tJFI (touches)\tJFI (guids)");
+			pw_h3.println("repartition\tJFI (touches)\tJFI (guids)");
+			pw_h4.println("repartition\tJFI (touches)\tJFI (guids)");
+			pw_h5.println("repartition\tJFI (touches)\tJFI (guids)");
+			pw_h6.println("repartition\tJFI (touches)\tJFI (guids)");
 			
-			for (int i = 0; i < jfi_list_h1.size(); i++) {
-				pw_h1.println((i+1)+"\t"+jfi_list_h1.get(i));
-				pw_h2.println((i+1)+"\t"+jfi_list_h2.get(i));
-				pw_h3.println((i+1)+"\t"+jfi_list_h3.get(i));
-				pw_h4.println((i+1)+"\t"+jfi_list_h4.get(i));
-				pw_h5.println((i+1)+"\t"+jfi_list_h5.get(i));
-				pw_h6.println((i+1)+"\t"+jfi_list_h6.get(i));
+			for (int i = 0; i < jfi_list_h1.get("touches").size(); i++) {
+				pw_h1.println((i+1)+"\t"+jfi_list_h1.get("touches").get(i)+"\t"+jfi_list_h1.get("guids").get(i));
+				pw_h2.println((i+1)+"\t"+jfi_list_h2.get("touches").get(i)+"\t"+jfi_list_h2.get("guids").get(i));
+				pw_h3.println((i+1)+"\t"+jfi_list_h3.get("touches").get(i)+"\t"+jfi_list_h3.get("guids").get(i));
+				pw_h4.println((i+1)+"\t"+jfi_list_h4.get("touches").get(i)+"\t"+jfi_list_h4.get("guids").get(i));
+				pw_h5.println((i+1)+"\t"+jfi_list_h5.get("touches").get(i)+"\t"+jfi_list_h5.get("guids").get(i));
+				pw_h6.println((i+1)+"\t"+jfi_list_h6.get("touches").get(i)+"\t"+jfi_list_h6.get("guids").get(i));
 			}
 			
 			pw_replicateAll = new PrintWriter("./output/replicateAll_"+LocalDateTime.now()+".txt");
@@ -346,12 +375,16 @@ public class Main {
 			pw_hyperspace0 = new PrintWriter("./output/hyperspace0_"+LocalDateTime.now()+".txt");
 			pw_hyperspace1 = new PrintWriter("./output/hyperspace1_"+LocalDateTime.now()+".txt");
 			pw_hyperspace2 = new PrintWriter("./output/hyperspace2_"+LocalDateTime.now()+".txt");
+			pw_hyperdex = new PrintWriter("./output/hyperdex_"+LocalDateTime.now()+".txt");
+			pw_cns = new PrintWriter("./output/cns_"+LocalDateTime.now()+".txt");
 			
-			pw_replicateAll.println("# machine\tmessages");
-			pw_queryAll.println("# machine\tmessages");
-			pw_hyperspace0.println("# machine\tmessages");
-			pw_hyperspace1.println("# machine\tmessages");
-			pw_hyperspace2.println("# machine\tmessages");
+			pw_replicateAll.println("machine\t# messages");
+			pw_queryAll.println("machine\tmessages");
+			pw_hyperspace0.println("machine\t# messages");
+			pw_hyperspace1.println("machine\t# messages");
+			pw_hyperspace2.println("machine\t# messages");
+			pw_hyperdex.println("machine\t# messages");
+			pw_cns.println("machine\t# messages");
 			
 			for (int machine = 1; machine <= num_mach; machine++) {
 				pw_replicateAll.println(machine+"\t"+messagesPerMachineReplicateAll.get(machine));
@@ -359,6 +392,8 @@ public class Main {
 				pw_hyperspace0.println(machine+"\t"+messagesPerMachineHyperspace0.get(machine));
 				pw_hyperspace1.println(machine+"\t"+messagesPerMachineHyperspace1.get(machine));
 				pw_hyperspace2.println(machine+"\t"+messagesPerMachineHyperspace2.get(machine));
+				pw_hyperdex.println(machine+"\t"+messagesPerMachineHyperdex.get(machine));
+				pw_cns.println(machine+"\t"+messagesPerMachineCNS.get(machine));
 			}
 			
 			
@@ -376,6 +411,8 @@ public class Main {
 			pw_hyperspace0.close();
 			pw_hyperspace1.close();
 			pw_hyperspace2.close();
+			pw_hyperdex.close();
+			pw_cns.close();
 		}
 
 	}

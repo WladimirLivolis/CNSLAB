@@ -164,17 +164,21 @@ public class Utilities {
 		
 	}
 	
-	public static double JFI(Queue<Operation> oplist, List<Machine> mlist) {
+	public static Map<String, Double> JFI(Queue<Operation> oplist, List<Machine> mlist) {
 		
-		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0;
+		Map<String, Double> output = new HashMap<String, Double>(2);
+		
+		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0, guids = 0, guids_square = 0;
 		
 		checkTouchesPerMachine(mlist, oplist);
 		
 		for (Machine m : mlist) {
 			up_touches += m.getUpdateTouches();
 			s_touches += m.getSearchTouches();
+			guids += m.getGUIDs().size();
 			upsquare += Math.pow(m.getUpdateTouches(), 2);
 			ssquare += Math.pow(m.getSearchTouches(), 2);
+			guids_square += Math.pow(m.getGUIDs().size(), 2);			
 		}
 		
 		double JU = 0.0, JS = 0.0;
@@ -192,9 +196,14 @@ public class Utilities {
 								
 		double RHO = (double) num_searches / oplist.size();
 						
-		double JFI = ( RHO * JS ) + ( (1 - RHO) * JU );
+		double JFI_touches = ( RHO * JS ) + ( (1 - RHO) * JU );
+		
+		double JFI_guids = Math.pow(guids, 2) / ( mlist.size() * guids_square );
+		
+		output.put("touches", JFI_touches);
+		output.put("guids", JFI_guids);
 	
-		return JFI;
+		return output;
 	}
 	
 	public static List<Region> copyRegions(List<Region> regions) {
