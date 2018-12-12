@@ -20,8 +20,37 @@ public class HeuristicV2 {
 		this.num_machines = num_machines;
 		this.axis = axis;
 		this.metric = metric;
-		regions = Utilities.buildNewRegions(num_attr);
+		regions = buildNewRegions(num_attr, num_machines, axis);
 		quantiles = new TreeMap<Double, Double>();
+	}
+	
+	private List<Region> buildNewRegions(int num_attr, int num_machines, String axis) {
+		
+		List<Region> newRegions = new ArrayList<Region>();
+		
+		List<Region> regions = Utilities.buildNewRegions(num_attr);
+		
+		int n_regions = (int) Math.sqrt(num_machines), r = 1;
+		
+		double low = 0, high = 1;
+		
+		for (int i = 1; i <= n_regions-1; i++) {
+			
+			double quant = i/(double)n_regions;
+			
+			Region newRegion = new Region("R"+r++, regions.get(0).getPairs());
+			newRegion.setPair(axis, low, quant);
+			newRegions.add(newRegion);
+			low = quant;
+						
+		}
+		
+		Region newRegion = new Region("R"+r, regions.get(0).getPairs());
+		newRegion.setPair(axis, low, high);
+		newRegions.add(newRegion);		
+		
+		return newRegions;
+		
 	}
 	
 	private Map<Double, Integer> updateAndSearchLoadCounter(Queue<Operation> oplist) {

@@ -31,6 +31,8 @@ public class Utilities {
 			JFI = JFI_touches(oplist, rlist);
 		} else if (metric.toLowerCase().equals("load")) {
 			JFI = JFI_load(oplist, rlist);			
+		} else if (metric.toLowerCase().equals("guids")) {
+			JFI = JFI_guids(oplist, rlist);
 		}
 		
 		return JFI;
@@ -101,6 +103,65 @@ public class Utilities {
 		double JFI = ( RHO * JS ) + ( (1 - RHO) * JU );
 		
 		return JFI;
+	}
+	
+	private static double JFI_guids(Queue<Operation> oplist, List<Region> rlist) {
+		
+		long guids = 0, guids_square = 0;
+				
+		checkTouchesPerRegion(rlist, oplist);
+		
+		for (Region r : rlist) {
+			guids += r.getGUIDs().size();
+			guids_square += Math.pow(r.getGUIDs().size(), 2);			
+		}
+
+		double JFI = Math.pow(guids, 2) / ( rlist.size() * guids_square );
+		
+		return JFI;
+	}
+	
+	public static Map<String, Double> JFI_touches_and_guids(Queue<Operation> oplist, List<Region> rlist) {
+		
+		Map<String, Double> output = new HashMap<String, Double>(2);
+		
+		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0, guids = 0, guids_square = 0;
+		
+		checkTouchesPerRegion(rlist, oplist);
+		
+		for (Region r : rlist) {			
+			up_touches += r.getUpdateTouches();
+			s_touches += r.getSearchTouches();
+			guids += r.getGUIDs().size();
+			upsquare += Math.pow(r.getUpdateTouches(), 2);
+			ssquare += Math.pow(r.getSearchTouches(), 2);
+			guids_square += Math.pow(r.getGUIDs().size(), 2);			
+		}
+		
+		double JU = 0.0, JS = 0.0;
+		
+		if (up_touches != 0)
+			JU = Math.pow(up_touches, 2) / ( rlist.size() * upsquare );
+		
+		if (s_touches != 0)
+			JS = Math.pow(s_touches , 2) / ( rlist.size() * ssquare  );
+								
+		int num_searches = 0;
+		for (Operation op : oplist)
+			if (op instanceof Search)
+				num_searches++;
+								
+		double RHO = (double) num_searches / oplist.size();
+						
+		double JFI_touches = ( RHO * JS ) + ( (1 - RHO) * JU );
+		
+		double JFI_guids = Math.pow(guids, 2) / ( rlist.size() * guids_square );
+		
+		output.put("touches", JFI_touches);
+		output.put("guids", JFI_guids);
+		
+		return output;
+		
 	}
 	
 	public static double JFI(Queue<Operation> oplist, List<Machine> mlist) {
@@ -462,27 +523,21 @@ public class Utilities {
 		
 	}
 	
-	/* Pick a distribution for each attribute, with different parameters for each operation. */
+	/* For each type operation and for each attribute it picks a distribution and sets its parameters. */
 	public static void generateRandomDistribution(int num_attr, ArrayList<String> possibleDistributions, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
 		
-		Map<Integer, String> operationDist = new TreeMap<Integer, String>();
-		for (int i = 1; i <= num_attr; i++) {
-			String dist = possibleDistributions.get(rnd.nextInt(3)).toLowerCase();
-			operationDist.put(i, dist);
-		}
-		distribution.put("update", operationDist);
-		distribution.put("search", operationDist);
-		
-		_generateRandomDistribution("update", num_attr, distribution, distParams, rnd);
-		_generateRandomDistribution("search", num_attr, distribution, distParams, rnd);
+		_generateRandomDistribution("update", num_attr, possibleDistributions, distribution, distParams, rnd);
+		_generateRandomDistribution("search", num_attr, possibleDistributions, distribution, distParams, rnd);
 		
 	}
 	
-	private static void _generateRandomDistribution(String operation, int num_attr, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+	private static void _generateRandomDistribution(String operation, int num_attr, ArrayList<String> possibleDistributions, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
 		
+		Map<Integer, String> operationDist = new TreeMap<Integer, String>();
 		Map<Integer, Map<String, Double>> operationDistParams = new TreeMap<Integer, Map<String, Double>>();
 		for (int i = 1; i <= num_attr; i++) {
-			String dist = distribution.get(operation).get(i);
+			String dist = possibleDistributions.get(rnd.nextInt(possibleDistributions.size())).toLowerCase();
+			operationDist.put(i, dist);
 			Map<String, Double> attrDistParams = new HashMap<String, Double>();
 			if (dist.equals("uniform")) {
 				attrDistParams.put("low", rnd.nextDouble());
@@ -499,6 +554,7 @@ public class Utilities {
 			}
 			operationDistParams.put(i, attrDistParams);
 		}
+		distribution.put(operation, operationDist);
 		distParams.put(operation, operationDistParams);
 		
 	}
@@ -1104,6 +1160,11 @@ public class Utilities {
 		Map<Region, List<Integer>> outgoing_regions = new HashMap<Region, List<Integer>>();
 		Map<Region, List<Integer>> incoming_regions = new HashMap<Region, List<Integer>>();
 		
+		for (Region r : regions) {
+			outgoing_regions.put(r, new ArrayList<Integer>());
+			incoming_regions.put(r, new ArrayList<Integer>());
+		}
+		
 		// I) Checks guids that must leave this region because of a repartition 
 		for (Region r : regions) { // iterates over regions
 			
@@ -1131,11 +1192,6 @@ public class Utilities {
 					}
 					
 				}
-				
-				if (!outgoing_regions.containsKey(r))
-					outgoing_regions.put(r, new ArrayList<Integer>());
-				if (!incoming_regions.containsKey(r))
-					incoming_regions.put(r, new ArrayList<Integer>());
 				
 				if (!guid_belongs_to_this_region) { // if guid doesn't belong to this region anymore
 								

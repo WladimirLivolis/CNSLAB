@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +12,13 @@ public class HeuristicV1 {
 	
 	public HeuristicV1(int num_attr, int num_machines) {
 		this.num_machines = num_machines;
-		regions = Utilities.buildNewRegions(num_attr);
+		regions = buildNewRegions(num_attr);
+	}
+	
+	private List<Region> buildNewRegions(int num_attr) { // initially this heuristic sets its regions like hyperdex does
+		List<Region> regions = new ArrayList<Region>();
+		regions.addAll((new HeuristicV1_5(num_attr)).partition());
+		return regions;
 	}
 	
 	/* Returns the least splitted region by looking for the oldest region, i.e., the region with the smallest iteration flag. */
@@ -45,7 +52,8 @@ public class HeuristicV1 {
 	public List<Region> partition(Queue<Operation> oplist) {
 		
 		// to enforce regions is clean
-		regions = Utilities.buildNewRegions(regions.get(0).getPairs().size());
+		int num_attr = regions.get(0).getPairs().size();
+		regions = Utilities.buildNewRegions(num_attr);
 		
 		double n = (double) num_machines;
 		int num_iterations = ((int)Math.sqrt(n)) - 1;
