@@ -93,24 +93,28 @@ public class Main {
 		
 	}
 	
-	private static void testHeuristicsAgainstNewOperations(String sampleFile, boolean windowIsFull, Queue<Operation> op_window, List<Region> regions1, List<Region> regions2, List<Region> regions3, List<Region> regions4, List<Machine> machines5, List<Region> regions6, HeuristicV1 heuristic1, HeuristicV2 heuristic2, HeuristicV3 heuristic3, Map<String, List<Double>> jfi_list_h1, Map<String, List<Double>> jfi_list_h2, Map<String, List<Double>> jfi_list_h3, Map<String, List<Double>> jfi_list_h4, Map<String, List<Double>> jfi_list_h5, Map<String, List<Double>> jfi_list_h6, int num_machines, String axis, Map<Integer, Integer> messagesPerMachineReplicateAll, Map<Integer, Integer> messagesPerMachineQueryAll, Map<Integer, Integer> messagesPerMachineHyperspace0, Map<Integer, Integer> messagesPerMachineHyperspace1, Map<Integer, Integer> messagesPerMachineHyperspace2, Map<Integer, Integer> messagesPerMachineHyperdex, Map<Integer, Integer> messagesPerMachineCNS) {
+	private static void testHeuristicsAgainstNewOperations(List<String> sampleFileNames, List<Region> regions1, List<Region> regions2, List<Region> regions3, List<Region> regions4, List<Machine> machines5, List<Region> regions6, HeuristicV1 heuristic1, HeuristicV2 heuristic2, HeuristicV3 heuristic3, Map<String, List<Double>> jfi_list_h1, Map<String, List<Double>> jfi_list_h2, Map<String, List<Double>> jfi_list_h3, Map<String, List<Double>> jfi_list_h4, Map<String, List<Double>> jfi_list_h5, Map<String, List<Double>> jfi_list_h6, int num_machines, String axis, Map<Integer, Integer> messagesPerMachineReplicateAll, Map<Integer, Integer> messagesPerMachineQueryAll, Map<Integer, Integer> messagesPerMachineHyperspace0, Map<Integer, Integer> messagesPerMachineHyperspace1, Map<Integer, Integer> messagesPerMachineHyperspace2, Map<Integer, Integer> messagesPerMachineHyperdex, Map<Integer, Integer> messagesPerMachineCNS) {
 		
-		// Reading operations from testing sample
-		System.out.println("["+LocalTime.now()+"] Reading testing sample file...");
-		Queue<Operation> oplist = Utilities.readOperationsFile(sampleFile);
+		// Reading operations from sample files
+		Queue<Operation> oplist = new LinkedList<Operation>();
+		System.out.println("["+LocalTime.now()+"] Reading testing sample files...");
+		for (String sampleFile : sampleFileNames) {
+			oplist.addAll(Utilities.readOperationsFile(sampleFile));
+		}
 		System.out.println("["+LocalTime.now()+"] Done!");
 		
-		Queue<Operation> suboplist = new LinkedList<Operation>();
-		boolean window_moved = false;
+		Queue<Operation> op_window = new LinkedList<Operation>(), suboplist = new LinkedList<Operation>();
+		boolean window_moved = false, windowIsFull = false;
 		int numberOfObservationsSeenSoFar = heuristic3.numberOfObservationsSeenSoFar();
+		int period = 16384; // # of operations
 		
 		while (!oplist.isEmpty()) {
 			
-			if(window_moved) {
+			if (suboplist.size() == period) {
 				
 				System.out.println("Size of operations window: "+op_window.size()+" operations");
-				System.out.println("No. of new operations since last window movement: "+suboplist.size()+" operations");
-				System.out.println("No. of observations since last window movement: "+(heuristic3.numberOfObservationsSeenSoFar()-numberOfObservationsSeenSoFar)+" observations");
+				System.out.println("No. of new operations since last period: "+suboplist.size()+" operations");
+				System.out.println("No. of observations since last period: "+(heuristic3.numberOfObservationsSeenSoFar()-numberOfObservationsSeenSoFar)+" observations");
 				numberOfObservationsSeenSoFar = heuristic3.numberOfObservationsSeenSoFar();
 				
 				System.out.println("["+LocalTime.now()+"] Calculating metric distribution per region...");
@@ -175,7 +179,7 @@ public class Main {
 				op_window.add(op);
 								
 				suboplist.add(op);
-				
+								
 			}
 			
 		}
@@ -186,10 +190,10 @@ public class Main {
 		
 		int num_attr = 3;
 		int num_mach = 64;
-		int num_max_guids = 5000;
+		int num_max_guids = 8192; // 2^13 GUIDs
 		
-		int sample_size = 15000;
-		double RHO = 0; // (# search operations) / (# operations)
+		int sample_size = 262144; // 2^18 operations
+		double RHO = 0.75; // (# search operations) / (# operations)
 		
 		int update_sample_size = (int)((1 - RHO)*sample_size);
 		int search_sample_size = (int)(RHO*sample_size);
@@ -197,7 +201,13 @@ public class Main {
 		System.out.println("Update sample size: "+update_sample_size);
 		System.out.println("Search sample size: "+search_sample_size);
 		
-		int window_size = 4096;// 2^12 observations (touches)
+		int window_size;
+		
+		if (RHO == 0) {
+			window_size = 16384; // 2^14 observations (touches)
+		} else {
+			window_size = 8388608; // 2^23 observations (touches)
+		}
 		
 //		String axis = args[0];
 		String axis = "A1";
@@ -205,7 +215,7 @@ public class Main {
 	
 		double e = 1/64d;
 		
-		int numOfEpochs = 3;
+		int numOfEpochs = 4;
 
 		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
 		
@@ -332,16 +342,9 @@ public class Main {
 			messagesPerMachineCNS.put(machine, 0);
 		}
 		
-		Queue<Operation> op_window = new LinkedList<Operation>();
-		
-		boolean windowIsFull = false;
-		
 		// tests heuristics
-		for (int i = 1; i <= numOfEpochs; i++) {
-			if (i > 1) { windowIsFull = true; }
-			testHeuristicsAgainstNewOperations(sampleFileNames.get(i-1), windowIsFull, op_window, regions1, regions2, regions3, regions4, machines5, regions6, heuristic1, heuristic2, heuristic3, jfi_list_h1, jfi_list_h2, jfi_list_h3, jfi_list_h4, jfi_list_h5, jfi_list_h6, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace0, messagesPerMachineHyperspace1, messagesPerMachineHyperspace2, messagesPerMachineHyperdex, messagesPerMachineCNS);
-		}
-		
+		testHeuristicsAgainstNewOperations(sampleFileNames, regions1, regions2, regions3, regions4, machines5, regions6, heuristic1, heuristic2, heuristic3, jfi_list_h1, jfi_list_h2, jfi_list_h3, jfi_list_h4, jfi_list_h5, jfi_list_h6, num_mach, axis, messagesPerMachineReplicateAll, messagesPerMachineQueryAll, messagesPerMachineHyperspace0, messagesPerMachineHyperspace1, messagesPerMachineHyperspace2, messagesPerMachineHyperdex, messagesPerMachineCNS);
+
 		// Writes log files to generate graphs with gnuplot
 		PrintWriter pw_h1 = null, pw_h2 = null, pw_h3 = null, pw_h4 = null, pw_h5 = null, pw_h6 = null, pw_replicateAll = null, pw_queryAll = null, pw_hyperspace0 = null, pw_hyperspace1 = null, pw_hyperspace2 = null, pw_hyperdex = null, pw_cns = null;
 		

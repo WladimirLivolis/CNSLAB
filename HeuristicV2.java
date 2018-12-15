@@ -138,7 +138,7 @@ public class HeuristicV2 {
 	private Map<Double, Integer> updateAndSearchTouchesCounter(Queue<Operation> oplist) {
 
 		Map<Double, Integer> touchesPerPoint = new TreeMap<Double, Integer>();
-		Map<Double, Integer> guidsPerPoint   = new TreeMap<Double, Integer>();
+		Map<Double, Integer> guidsPerPoint = new TreeMap<Double, Integer>();
 
 		for (Operation op : oplist) { // iterate over all operations
 
@@ -311,7 +311,8 @@ public class HeuristicV2 {
 		
 		double low = 0, high = 1;
 		
-		quantiles = findQuantiles(oplist);
+		Map<Double, Double> newQuantiles = findQuantiles(oplist);
+		if (!newQuantiles.isEmpty()) { quantiles = newQuantiles; } 
 		
 		try {
 
