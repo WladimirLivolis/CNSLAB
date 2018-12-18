@@ -33,7 +33,12 @@ public class GK {
 			}
 
 		}
-
+		
+		// make sure it returns a quantile
+		if (quantile.size() == 0) {
+			quantile = quantile(phi, n, s, e+e);
+		}
+		
 		return quantile;
 	}
 

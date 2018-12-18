@@ -1,5 +1,3 @@
-import java.io.PrintWriter;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -20,8 +18,37 @@ public class HeuristicV2 {
 		this.num_machines = num_machines;
 		this.axis = axis;
 		this.metric = metric;
-		regions = Utilities.buildNewRegions(num_attr);
+		regions = buildNewRegions(num_attr, num_machines, axis);
 		quantiles = new TreeMap<Double, Double>();
+	}
+	
+	private List<Region> buildNewRegions(int num_attr, int num_machines, String axis) {
+		
+		List<Region> newRegions = new ArrayList<Region>();
+		
+		List<Region> regions = Utilities.buildNewRegions(num_attr);
+		
+		int n_regions = (int) Math.sqrt(num_machines), r = 1;
+		
+		double low = 0, high = 1;
+		
+		for (int i = 1; i <= n_regions-1; i++) {
+			
+			double quant = i/(double)n_regions;
+			
+			Region newRegion = new Region("R"+r++, regions.get(0).getPairs());
+			newRegion.setPair(axis, low, quant);
+			newRegions.add(newRegion);
+			low = quant;
+						
+		}
+		
+		Region newRegion = new Region("R"+r, regions.get(0).getPairs());
+		newRegion.setPair(axis, low, high);
+		newRegions.add(newRegion);		
+		
+		return newRegions;
+		
 	}
 	
 	private Map<Double, Integer> updateAndSearchLoadCounter(Queue<Operation> oplist) {
@@ -109,7 +136,7 @@ public class HeuristicV2 {
 	private Map<Double, Integer> updateAndSearchTouchesCounter(Queue<Operation> oplist) {
 
 		Map<Double, Integer> touchesPerPoint = new TreeMap<Double, Integer>();
-		Map<Double, Integer> guidsPerPoint   = new TreeMap<Double, Integer>();
+		Map<Double, Integer> guidsPerPoint = new TreeMap<Double, Integer>();
 
 		for (Operation op : oplist) { // iterate over all operations
 
@@ -282,35 +309,24 @@ public class HeuristicV2 {
 		
 		double low = 0, high = 1;
 		
-		quantiles = findQuantiles(oplist);
-		
-		try {
+		Map<Double, Double> newQuantiles = findQuantiles(oplist);
+		if (!newQuantiles.isEmpty()) { quantiles = newQuantiles; } 
 
-			PrintWriter pw = new PrintWriter("./heuristic2/heuristic2_quant_"+LocalDateTime.now()+".txt");
-			pw.println("phi\tquantile");
-			
-			for (Map.Entry<Double, Double> e : quantiles.entrySet()) {
-				
-				double phi = e.getKey();
-				double quant = e.getValue();
-				
-				Region newRegion = new Region("R"+r, regions.get(0).getPairs());
-				newRegion.setPair(axis, low, quant);
-				newRegions.add(newRegion);
-				r++;
-				low = quant;
-				
-				System.out.println("Phi: "+phi+" | Quantile: "+quant);
-				pw.println(phi+"\t"+quant);
-				
-			}
+		for (Map.Entry<Double, Double> e : quantiles.entrySet()) {
 
-			pw.close();
+			double phi = e.getKey();
+			double quant = e.getValue();
 
-		} catch (Exception err) {
-			err.printStackTrace();
+			Region newRegion = new Region("R"+r, regions.get(0).getPairs());
+			newRegion.setPair(axis, low, quant);
+			newRegions.add(newRegion);
+			r++;
+			low = quant;
+
+			System.out.println("Phi: "+phi+" | Quantile: "+quant);
+
 		}
-		
+
 		Region newRegion = new Region("R"+r, regions.get(0).getPairs());
 		newRegion.setPair(axis, low, high);
 		newRegions.add(newRegion);
