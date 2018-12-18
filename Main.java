@@ -257,8 +257,8 @@ public class Main {
 		
 		ArrayList<String> possibleDistributions = new ArrayList<String>();
 		possibleDistributions.add("uniform");
-		possibleDistributions.add("normal");
-		possibleDistributions.add("exponential");
+//		possibleDistributions.add("normal");
+//		possibleDistributions.add("exponential");
 		
 		for (int i = 1; i <= numOfEpochs; i++) {
 			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i);
@@ -386,12 +386,12 @@ public class Main {
 			pw_h5 = new PrintWriter("./output/heuristic5_jfi_"+RHO+"_"+experiment_number+".txt");
 			pw_h6 = new PrintWriter("./output/heuristic6_jfi_"+RHO+"_"+experiment_number+".txt");
 			
-			pw_h1.println("repartition\tJFI (touches)\tJFI (guids)");
-			pw_h2.println("repartition\tJFI (touches)\tJFI (guids)");
-			pw_h3.println("repartition\tJFI (touches)\tJFI (guids)");
-			pw_h4.println("repartition\tJFI (touches)\tJFI (guids)");
-			pw_h5.println("repartition\tJFI (touches)\tJFI (guids)");
-			pw_h6.println("repartition\tJFI (touches)\tJFI (guids)");
+			pw_h1.println("# repartition\tJFI (touches)\tJFI (guids)");
+			pw_h2.println("# repartition\tJFI (touches)\tJFI (guids)");
+			pw_h3.println("# repartition\tJFI (touches)\tJFI (guids)");
+			pw_h4.println("# repartition\tJFI (touches)\tJFI (guids)");
+			pw_h5.println("# repartition\tJFI (touches)\tJFI (guids)");
+			pw_h6.println("# repartition\tJFI (touches)\tJFI (guids)");
 			
 			for (int i = 0; i < jfi_list_h1.get("touches").size(); i++) {
 				pw_h1.println((i+1)+"\t"+jfi_list_h1.get("touches").get(i)+"\t"+jfi_list_h1.get("guids").get(i));
