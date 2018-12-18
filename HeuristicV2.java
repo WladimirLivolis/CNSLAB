@@ -1,5 +1,3 @@
-import java.io.PrintWriter;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -313,34 +311,22 @@ public class HeuristicV2 {
 		
 		Map<Double, Double> newQuantiles = findQuantiles(oplist);
 		if (!newQuantiles.isEmpty()) { quantiles = newQuantiles; } 
-		
-		try {
 
-			PrintWriter pw = new PrintWriter("./heuristic2/heuristic2_quant_"+LocalDateTime.now()+".txt");
-			pw.println("phi\tquantile");
-			
-			for (Map.Entry<Double, Double> e : quantiles.entrySet()) {
-				
-				double phi = e.getKey();
-				double quant = e.getValue();
-				
-				Region newRegion = new Region("R"+r, regions.get(0).getPairs());
-				newRegion.setPair(axis, low, quant);
-				newRegions.add(newRegion);
-				r++;
-				low = quant;
-				
-				System.out.println("Phi: "+phi+" | Quantile: "+quant);
-				pw.println(phi+"\t"+quant);
-				
-			}
+		for (Map.Entry<Double, Double> e : quantiles.entrySet()) {
 
-			pw.close();
+			double phi = e.getKey();
+			double quant = e.getValue();
 
-		} catch (Exception err) {
-			err.printStackTrace();
+			Region newRegion = new Region("R"+r, regions.get(0).getPairs());
+			newRegion.setPair(axis, low, quant);
+			newRegions.add(newRegion);
+			r++;
+			low = quant;
+
+			System.out.println("Phi: "+phi+" | Quantile: "+quant);
+
 		}
-		
+
 		Region newRegion = new Region("R"+r, regions.get(0).getPairs());
 		newRegion.setPair(axis, low, high);
 		newRegions.add(newRegion);
