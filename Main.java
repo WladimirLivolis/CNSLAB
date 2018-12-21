@@ -261,7 +261,6 @@ public class Main {
 		possibleDistributions.add("normal");
 		possibleDistributions.add("exponential");
 		
-		/*
 		for (int i = 1; i <= numOfEpochs; i++) {
 			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i);
 			
@@ -287,8 +286,8 @@ public class Main {
 			
 			System.out.println("["+LocalTime.now()+"] Done!");
 		}
-		*/
 		
+		/*
 		// comment everything from here
 		Map<String, Map<Integer, String>> distribution = Utilities.pickRandomDistribution(num_attr, possibleDistributions, new Random());
 		for (int i = 1; i <= numOfEpochs; i++) {
@@ -312,6 +311,8 @@ public class Main {
 			System.out.println("["+LocalTime.now()+"] Done!");
 		}
 		// to here
+		*/ 
+		 
 		
 		HeuristicV1 heuristic1 = new HeuristicV1(num_attr, num_mach);
 		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
