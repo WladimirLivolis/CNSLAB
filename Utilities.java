@@ -568,6 +568,62 @@ public class Utilities {
 		
 	}
 	
+	public static Map<String, Map<Integer, String>> pickRandomDistribution(int num_attr, ArrayList<String> possibleDistributions, Random rnd) {
+		
+		Map<String, Map<Integer, String>> distribution = new HashMap<String, Map<Integer, String>>();
+		Map<Integer, String> operationDist = new TreeMap<Integer, String>();
+		
+		String[] operations = {"update", "search"};
+		
+		for (String operation : operations) {
+			
+			for (int i = 1; i <= num_attr; i++) {
+				
+				String dist = possibleDistributions.get(rnd.nextInt(possibleDistributions.size())).toLowerCase();
+				operationDist.put(i, dist);
+				
+			}
+			distribution.put(operation, operationDist);
+			
+		}
+		
+		return distribution;
+		
+	}
+	
+	/* Given the distribution for each type of operation and for each attribute it randomly sets its parameters */
+	public static void generateRandomDistribution(int num_attr, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+		
+		_generateRandomDistribution("update", num_attr, distribution, distParams, rnd);
+		_generateRandomDistribution("search", num_attr, distribution, distParams, rnd);
+		
+	}
+	
+	private static void _generateRandomDistribution(String operation, int num_attr, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+		
+		Map<Integer, Map<String, Double>> operationDistParams = new TreeMap<Integer, Map<String, Double>>();
+		for (int i = 1; i <= num_attr; i++) {
+			String dist = distribution.get(operation).get(i);
+			Map<String, Double> attrDistParams = new HashMap<String, Double>();
+			if (dist.equals("uniform")) {
+				attrDistParams.put("low", rnd.nextDouble());
+				attrDistParams.put("high", rnd.nextDouble());
+			} else if (dist.equals("normal") || dist.equals("gaussian")) {
+				double deviation;
+				do { deviation = rnd.nextDouble(); } while (deviation == 0);
+				attrDistParams.put("deviation", deviation);
+				attrDistParams.put("mean", rnd.nextDouble());
+			} else if (dist.equals("exponential")) {
+				double lambda;
+				do { lambda = 2 * rnd.nextDouble(); } while (lambda == 0);
+				attrDistParams.put("lambda", lambda);
+			}
+			operationDistParams.put(i, attrDistParams);
+		}
+		distParams.put(operation, operationDistParams);
+		
+	}
+	
 	public static void checkLoadPerRegion(List<Region> regions, Queue<Operation> oplist) {
 		
 		clear_regions_load(regions);

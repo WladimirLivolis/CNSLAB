@@ -258,8 +258,8 @@ public class Main {
 		
 		ArrayList<String> possibleDistributions = new ArrayList<String>();
 		possibleDistributions.add("uniform");
-//		possibleDistributions.add("normal");
-//		possibleDistributions.add("exponential");
+		possibleDistributions.add("normal");
+		possibleDistributions.add("exponential");
 		
 		for (int i = 1; i <= numOfEpochs; i++) {
 			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i);
@@ -286,6 +286,32 @@ public class Main {
 			
 			System.out.println("["+LocalTime.now()+"] Done!");
 		}
+		
+		/*
+		// comment everything from here
+		Map<String, Map<Integer, String>> distribution = Utilities.pickRandomDistribution(num_attr, possibleDistributions, new Random());
+		for (int i = 1; i <= numOfEpochs; i++) {
+			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i);
+			Map<String, Map<Integer, Map<String, Double>>>  distParams = new HashMap<String, Map<Integer, Map<String, Double>>>();
+			Utilities.generateRandomDistribution(num_attr, distribution, distParams, new Random());
+			
+			for (Map.Entry<String, Map<Integer, String>> op : distribution.entrySet()) {
+				System.out.println("Operation: "+op.getKey());
+				for (Map.Entry<Integer, String> attr : op.getValue().entrySet()) {
+					System.out.println("Attr: "+attr.getKey());
+					System.out.println("Dist: "+attr.getValue());
+					for (Map.Entry<String, Double> param : distParams.get(op.getKey()).get(attr.getKey()).entrySet()) {
+						System.out.println(param.getKey()+": "+param.getValue());
+					}
+				}
+			}
+			
+			Utilities.generateOperations(update_sample_size/numOfEpochs, search_sample_size/numOfEpochs, num_attr, num_max_guids, guids, distribution, distParams, sampleFileNames.get(i-1), new Random());
+			
+			System.out.println("["+LocalTime.now()+"] Done!");
+		}
+		// to here
+		*/
 		
 		HeuristicV1 heuristic1 = new HeuristicV1(num_attr, num_mach);
 		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
