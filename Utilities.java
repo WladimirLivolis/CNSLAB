@@ -571,11 +571,12 @@ public class Utilities {
 	public static Map<String, Map<Integer, String>> pickRandomDistribution(int num_attr, ArrayList<String> possibleDistributions, Random rnd) {
 		
 		Map<String, Map<Integer, String>> distribution = new HashMap<String, Map<Integer, String>>();
-		Map<Integer, String> operationDist = new TreeMap<Integer, String>();
 		
 		String[] operations = {"update", "search"};
 		
 		for (String operation : operations) {
+			
+			Map<Integer, String> operationDist = new TreeMap<Integer, String>();
 			
 			for (int i = 1; i <= num_attr; i++) {
 				
