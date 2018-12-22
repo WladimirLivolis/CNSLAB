@@ -251,7 +251,7 @@ public class Main {
 		
 		List<String> sampleFileNames = new ArrayList<String>(numOfEpochs);
 		for (int i = 1; i <= numOfEpochs; i++) {
-			sampleFileNames.add("./samples/testing_sample_"+i+"_"+LocalDateTime.now()+".json");
+			sampleFileNames.add("./samples/testing_sample_"+i+"_"+experiment_number+"_"+LocalDateTime.now()+".json");
 		}
 		
 		/* GENERATING SAMPLES */
@@ -312,7 +312,6 @@ public class Main {
 		}
 		// to here
 		*/ 
-		 
 		
 		HeuristicV1 heuristic1 = new HeuristicV1(num_attr, num_mach);
 		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
