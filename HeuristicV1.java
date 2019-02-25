@@ -3,6 +3,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Random;
 import java.util.TreeMap;
 
 public class HeuristicV1 {
@@ -15,9 +16,16 @@ public class HeuristicV1 {
 		regions = buildNewRegions(num_attr);
 	}
 	
-	private List<Region> buildNewRegions(int num_attr) { // initially this heuristic sets its regions like hyperdex does
+//	private List<Region> buildNewRegions(int num_attr) { // initially this heuristic sets its regions like hyperdex does
+//		List<Region> regions = new ArrayList<Region>();
+//		regions.addAll((new HeuristicV1_5(num_attr)).partition());
+//		return regions;
+//	}
+	
+	private List<Region> buildNewRegions(int num_attr) { // initially this heuristic sets its regions like Quantiles does
 		List<Region> regions = new ArrayList<Region>();
-		regions.addAll((new HeuristicV1_5(num_attr)).partition());
+		String axis = "A"+((new Random()).nextInt(num_attr)+1);
+		regions.addAll((new HeuristicV2(num_attr, num_machines, axis, "touches")).getRegions());
 		return regions;
 	}
 	

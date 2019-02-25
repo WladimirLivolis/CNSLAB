@@ -206,6 +206,53 @@ public class Utilities {
 		return output;
 	}
 	
+	public static Map<String, Double> JFI_subspaces(Queue<Operation> oplist, List<List<Region>> subspaces) {
+		
+		Map<String, Double> output = new HashMap<String, Double>(2);
+		
+		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0, guids = 0, guids_square = 0;
+		
+		checkTouchesPerSubspace(subspaces, oplist);
+		
+		int count = 0;
+		for (List<Region> rlist : subspaces) {
+			for (Region r : rlist) {			
+				up_touches += r.getUpdateTouches();
+				s_touches += r.getSearchTouches();
+				guids += r.getGUIDs().size();
+				upsquare += Math.pow(r.getUpdateTouches(), 2);
+				ssquare += Math.pow(r.getSearchTouches(), 2);
+				guids_square += Math.pow(r.getGUIDs().size(), 2);
+				count++;
+			}
+		}
+		
+		double JU = 0.0, JS = 0.0;
+		
+		if (up_touches != 0)
+			JU = Math.pow(up_touches, 2) / ( count * upsquare );
+		
+		if (s_touches != 0)
+			JS = Math.pow(s_touches , 2) / ( count * ssquare  );
+								
+		int num_searches = 0;
+		for (Operation op : oplist)
+			if (op instanceof Search)
+				num_searches++;
+								
+		double RHO = (double) num_searches / oplist.size();
+						
+		double JFI_touches = ( RHO * JS ) + ( (1 - RHO) * JU );
+		
+		double JFI_guids = Math.pow(guids, 2) / ( count * guids_square );
+		
+		output.put("touches", JFI_touches);
+		output.put("guids", JFI_guids);
+		
+		return output;
+		
+	}
+	
 	public static List<Region> copyRegions(List<Region> regions) {
 		List<Region> copy = new ArrayList<Region>(regions.size());
 		for (Region r : regions) {
@@ -240,6 +287,22 @@ public class Utilities {
 		Map<String, Range> pairs = new HashMap<String, Range>(); // pairs attribute-range
 		
 		for (int i = 1; i <= num_attr; i++) {
+			pairs.put("A"+i, new Range(0.0, 1.0));
+		}
+		
+		Region region = new Region("R1", pairs);	
+		
+		List<Region> regions = new ArrayList<Region>();
+		regions.add(region);
+		
+		return regions;
+	}
+	
+	public static List<Region> buildNewRegions(int num_attr, int first_attr, int last_attr) {
+		
+		Map<String, Range> pairs = new HashMap<String, Range>(); // pairs attribute-range
+		
+		for (int i = first_attr; i <= last_attr; i++) {
 			pairs.put("A"+i, new Range(0.0, 1.0));
 		}
 		
@@ -931,6 +994,182 @@ public class Utilities {
 		
 	}
 	
+	public static void checkTouchesPerSubspace(List<List<Region>> subspaces, Queue<Operation> oplist) {
+		
+		clear_subspaces_touches(subspaces);
+		
+		for (Operation op : oplist) {
+			
+			if (op instanceof Update) {	checkUpdateTouchesPerSubspace(subspaces, (Update)op); }
+			
+			if (op instanceof Search) {	checkSearchTouchesPerSubspace(subspaces, (Search)op); }
+			
+		}
+		
+	}
+	
+	private static void checkUpdateTouchesPerSubspace(List<List<Region>> subspaces, Update up) {
+		
+		int guid = up.getGuid();
+		
+		for (List<Region> regions : subspaces) { // We iterate over all hyperdex subspaces
+
+			Region previousRegion = null;
+
+			// I) This first iteration over regions will look for touches due to previous GUID's positions
+			for (Region region : regions) {
+
+				boolean previouslyInRegion = region.hasThisGuid(guid);
+
+				// If guid is in this region
+				if (previouslyInRegion) {
+
+					region.removeGuid(guid); // removes it from this region's guid list 
+
+					previousRegion = region;
+
+					// Counts one touch
+					int previous_count = region.getUpdateTouches();
+					region.setUpdateTouches(previous_count+1);
+
+					break;
+
+				}
+
+			}
+
+			// II) This second iteration over regions will look for touches due to new GUID's positions
+			for (Region region : regions) {
+
+				boolean comingToRegion = true;
+
+				// Checks whether this update moves a GUID to this region
+				for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
+
+					String updateAttrKey = attr.getKey();
+					double updateAttrVal = attr.getValue();
+
+					if (region.getPairs().containsKey(updateAttrKey)) { // check the region's range for this attribute
+
+						double regionRangeStart = region.getPairs().get(updateAttrKey).getLow(); 
+						double regionRangeEnd = region.getPairs().get(updateAttrKey).getHigh();
+
+						if (updateAttrVal < regionRangeStart || updateAttrVal >= regionRangeEnd) { // checks whether guid is coming to this region (or if it is staying in this region)
+							comingToRegion = false;
+							break;
+						}
+					}
+				}
+
+				// If so ...
+				if (comingToRegion) {
+
+					// updates this GUID's attributes with info from this update operation
+					Map<String, Double> guid_attr = new HashMap<String, Double>();
+					for (Map.Entry<String, Double> up_attr : up.getAttributes().entrySet()) {
+						if (up_attr.getKey().contains("'")) { continue; } // ignore attributes ending with ', as it's old info
+						guid_attr.put(up_attr.getKey(), up_attr.getValue());
+					}
+					region.insertGuid(guid, guid_attr); // adds it to this region's guid list
+
+					// if it is coming from another region, counts one more touch
+					if (!region.equals(previousRegion)) {
+						int previous_count = region.getUpdateTouches();
+						region.setUpdateTouches(previous_count+1);
+					}
+
+					break;
+
+				}
+
+			}
+			
+		} // subspaces
+		
+	}
+	
+	private static void checkSearchTouchesPerSubspace(List<List<Region>> subspaces, Search s) {
+		
+		// We pick a random subspace
+		List<Region> regions = subspaces.get((new Random().nextInt(subspaces.size())));
+		
+		for (Region region : regions) { // iterate over regions
+
+			boolean isInRegion = true;
+			int count = 0;
+
+			// I) Checks whether this search is in this region
+
+			for (Map.Entry<String, Range> searchPair : s.getPairs().entrySet()) { // iterate over this search's attributes
+
+				String searchAttrKey    = searchPair.getKey();
+				double searchRangeStart = searchPair.getValue().getLow();
+				double searchRangeEnd   = searchPair.getValue().getHigh();
+
+				if (region.getPairs().containsKey(searchAttrKey)) { // check the region's range for this attribute
+				
+					double regionRangeStart = region.getPairs().get(searchAttrKey).getLow();
+					double regionRangeEnd   = region.getPairs().get(searchAttrKey).getHigh();
+
+					if (searchRangeStart > searchRangeEnd) {
+						if (searchRangeStart >= regionRangeEnd && searchRangeEnd < regionRangeStart) { isInRegion = false; break; }
+					} else {
+						if (searchRangeStart >= regionRangeEnd || searchRangeEnd < regionRangeStart) { isInRegion = false; break; }
+					}
+				}
+			}
+
+			// II) If so, counts the number of guids already in this region that meet this search's requirements
+
+			if (isInRegion) {
+
+				for (int guid : region.getGUIDs().keySet()) { // iterate over this region's guids
+
+					boolean flag = true;
+
+					for (Map.Entry<String, Double> attr : region.getGUIDs().get(guid).entrySet()) { // iterate over this guid's attributes
+
+						String guidAttrKey = attr.getKey();    
+						double guidAttrVal = attr.getValue();
+
+						if (s.getPairs().containsKey(guidAttrKey)) { // check the search range for this attribute
+						
+							double searchRangeStart = s.getPairs().get(guidAttrKey).getLow();
+							double searchRangeEnd   = s.getPairs().get(guidAttrKey).getHigh();
+
+							if (searchRangeStart > searchRangeEnd) {
+								if (guidAttrVal < searchRangeStart && guidAttrVal > searchRangeEnd) { flag = false; break; }
+							} else {
+								if (guidAttrVal < searchRangeStart || guidAttrVal > searchRangeEnd) { flag = false; break; }
+							}
+						}
+
+					}
+
+					if (flag) { count++; }
+
+				}
+
+			}
+			
+			// Sets this region's search touch counter
+			int previous_count = region.getSearchTouches();
+			region.setSearchTouches(previous_count+count);
+
+		}
+	}
+	
+	private static void clear_subspaces_touches(List<List<Region>> subspaces) {
+		
+		for (List<Region> regions : subspaces) {
+			for (Region r : regions) {
+				r.setSearchTouches(0);
+				r.setUpdateTouches(0);
+			}
+		}
+		
+	}
+	
 	public static void checkTouchesPerMachine(List<Machine> machines, Queue<Operation> oplist) {
 		
 		clear_machines_touches(machines);
@@ -1203,6 +1442,135 @@ public class Utilities {
 						int machine = (new Random()).nextInt((max - min) + 1) + min;
 						
 						messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
+
+					}
+
+				}
+
+			}
+
+		}
+
+		return messagesCounterPerMachine;
+		
+	}
+	
+	public static Map<Integer, Integer> messagesCounterHyperDex(int num_machines, Queue<Operation> oplist, List<List<Region>> subspaces) {
+
+		Map<Integer, Integer> messagesCounterPerMachine = new TreeMap<Integer, Integer>();
+
+		// initializes messages counter per machine
+		for (int i = 1; i <= num_machines; i++) {
+			messagesCounterPerMachine.put(i, 0);
+		}
+
+		for (Operation op : oplist) {
+
+			if (op instanceof Update) { 
+
+				Update up = (Update)op;
+				
+				for (List<Region> regions : subspaces) { // iterate over subspaces
+
+					for (Region r : regions) { // iterate over regions
+
+						// Checks whether this update is in this region regarding its attribute or its guid
+						boolean flag_attr = true, flag_guid = true;
+
+						for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
+
+							boolean isGUID = attr.getKey().contains("'");
+
+							String attrKey;
+							if (isGUID) {
+								attrKey = attr.getKey().substring(0, attr.getKey().length()-1);
+							} else {
+								attrKey = attr.getKey();
+							}
+							double attrVal = attr.getValue();
+
+							if (r.getPairs().containsKey(attrKey)) { // check the region's range for this attribute
+
+								double region_low_range = r.getPairs().get(attrKey).getLow();
+								double region_high_range = r.getPairs().get(attrKey).getHigh();
+
+								if (attrVal < region_low_range || attrVal >= region_high_range) { // check whether attribute value is inside this region range
+									if (isGUID) {
+										flag_guid = false;
+									} else {
+										flag_attr = false;
+									}
+								}
+
+							}
+
+						}
+
+						if (flag_attr || flag_guid) {
+
+							int subspace_index = subspaces.indexOf(regions)+1;
+							int region_index = regions.indexOf(r)+1;
+							
+							int machine_index = (subspace_index-1)*regions.size() + region_index;
+							
+							messagesCounterPerMachine.put(machine_index, messagesCounterPerMachine.get(machine_index)+1);
+
+						}
+
+					} // regions
+
+				} // subspaces
+
+			} else if (op instanceof Search) {
+
+				Search s = (Search)op;
+				
+				// pick a random subspace
+				List<Region> regions = subspaces.get((new Random().nextInt(subspaces.size())));
+
+				for (Region r : regions) { // iterate over regions
+
+					boolean flag = true;
+
+					for (Map.Entry<String, Range> search_pair : s.getPairs().entrySet()) { // iterate over this search pairs
+
+						String search_attr = search_pair.getKey();
+						double search_low_range = search_pair.getValue().getLow();
+						double search_high_range = search_pair.getValue().getHigh();
+
+						if (r.getPairs().containsKey(search_attr)) { // check the region's range for this attribute 
+
+							double region_low_range = r.getPairs().get(search_attr).getLow();
+							double region_high_range = r.getPairs().get(search_attr).getHigh();
+
+							if (search_low_range > search_high_range) {
+
+								if (search_low_range >= region_high_range && search_high_range < region_low_range) {
+									flag = false;
+									break;
+								}
+
+							} else {
+
+								if (search_low_range >= region_high_range || search_high_range < region_low_range) { // check whether both region & search ranges overlap
+									flag = false;
+									break;
+								}
+
+							}
+
+						}
+
+					}
+
+					if (flag) {
+
+						int subspace_index = subspaces.indexOf(regions)+1;
+						int region_index = regions.indexOf(r)+1;
+						
+						int machine_index = (subspace_index-1)*regions.size() + region_index;
+						
+						messagesCounterPerMachine.put(machine_index, messagesCounterPerMachine.get(machine_index)+1);
 
 					}
 
