@@ -1,14 +1,13 @@
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class Region {
 	
 	private String name;
 	private Map<String, Range> pairs;
-	private List<Integer> GUIDs;
+	private Map<Integer, Map<String, Double>> GUIDs;
 	private int update_touches;
 	private int search_touches;
 	private Map<Update, Double> update_load;
@@ -21,7 +20,7 @@ public class Region {
 		for (Map.Entry<String, Range> pair : pairs.entrySet()) { 
 			this.setPair(pair.getKey(), pair.getValue().getLow(), pair.getValue().getHigh()); 
 		}
-		GUIDs = new ArrayList<Integer>();
+		GUIDs = new TreeMap<Integer, Map<String, Double>>();
 		update_touches = 0;
 		search_touches = 0;
 		update_load = new HashMap<Update, Double>();
@@ -30,10 +29,6 @@ public class Region {
 	
 	public String getName() {
 		return name;
-	}
-	
-	public void setPair(String attrkey, Range range) {
-		pairs.put(attrkey, range);
 	}
 	
 	public void setPair(String attrkey, double low, double high) {
@@ -100,11 +95,11 @@ public class Region {
 	}
 	
 	public boolean hasThisGuid(int guid) {
-		return GUIDs.contains(guid);
+		return GUIDs.containsKey(guid);
 	}
 	
-	public void insertGuid(int guid) {
-		GUIDs.add(guid);
+	public void insertGuid(int guid, Map<String, Double> attrList) {
+		GUIDs.put(guid, attrList);
 	}
 	
 	public void removeGuid(int guid) {
@@ -115,8 +110,24 @@ public class Region {
 		GUIDs.clear();
 	}
 	
-	public List<Integer> getGUIDs() {
-		return Collections.unmodifiableList(GUIDs);
+	public Map<Integer, Map<String, Double>> getGUIDs() {
+		return Collections.unmodifiableMap(GUIDs);
+	}
+	
+	public String toString() {
+		StringBuilder str = new StringBuilder(this.getName());
+		str.append(" = [ ");
+		for (Map.Entry<String, Range> pair : this.getPairs().entrySet()) {
+			str.append("(");
+			str.append(pair.getKey());
+			str.append(",[");
+			str.append(pair.getValue().getLow());
+			str.append(",");
+			str.append(pair.getValue().getHigh());
+			str.append(")) ");	
+		}
+		str.append("]");
+		return str.toString();
 	}
 
 }

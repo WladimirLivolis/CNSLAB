@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -9,9 +10,15 @@ public class HeuristicV1 {
 	private int num_machines;
 	private List<Region> regions;
 	
-	public HeuristicV1(int num_machines, List<Region> regions) {
+	public HeuristicV1(int num_attr, int num_machines) {
 		this.num_machines = num_machines;
-		this.regions = regions;
+		regions = buildNewRegions(num_attr);
+	}
+	
+	private List<Region> buildNewRegions(int num_attr) { // initially this heuristic sets its regions like hyperdex does
+		List<Region> regions = new ArrayList<Region>();
+		regions.addAll((new HeuristicV1_5(num_attr)).partition());
+		return regions;
 	}
 	
 	/* Returns the least splitted region by looking for the oldest region, i.e., the region with the smallest iteration flag. */
@@ -44,13 +51,17 @@ public class HeuristicV1 {
 	 * the JFI.*/
 	public List<Region> partition(Queue<Operation> oplist) {
 		
+		// to enforce regions is clean
+		int num_attr = regions.get(0).getPairs().size();
+		regions = Utilities.buildNewRegions(num_attr);
+		
 		double n = (double) num_machines;
 		int num_iterations = ((int)Math.sqrt(n)) - 1;
 		int count = 1;
 				
 		for (int i = 1; i <= num_iterations; i++) {
 			
-			System.out.println(toString());
+			System.out.println(Utilities.printRegions(regions));
 			
 			Map<Double, List<Region>> possiblePartitions = new TreeMap<Double, List<Region>>();
 			
@@ -114,30 +125,15 @@ public class HeuristicV1 {
 
 		}
 		
-		System.out.println(toString());
+		System.out.println(Utilities.printRegions(regions));
 				
 		return Collections.unmodifiableList(regions);
 				
 	}
 	
-	public String toString() {
-		StringBuilder str = new StringBuilder("{ ");
-		for (Region region : regions) {
-			str.append(region.getName());
-			str.append(" = [ ");
-			for (Map.Entry<String, Range> pair : region.getPairs().entrySet()) {
-				str.append("(");
-				str.append(pair.getKey());
-				str.append(",[");
-				str.append(pair.getValue().getLow());
-				str.append(",");
-				str.append(pair.getValue().getHigh());
-				str.append("]) ");	
-			}
-			str.append("] ");
-		}
-		str.append("}");
-		return str.toString();
+	/* Returns the previously created regions */
+	public List<Region> getRegions() {
+		return Collections.unmodifiableList(regions);
 	}
 
 }

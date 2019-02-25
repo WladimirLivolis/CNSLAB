@@ -15,6 +15,10 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
+import com.google.common.hash.HashCode;
+import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
+
 public class Utilities {
 	
 	/* Returns the Jain's Fairness Index (JFI) given a list of regions and operations. *
@@ -27,6 +31,8 @@ public class Utilities {
 			JFI = JFI_touches(oplist, rlist);
 		} else if (metric.toLowerCase().equals("load")) {
 			JFI = JFI_load(oplist, rlist);			
+		} else if (metric.toLowerCase().equals("guids")) {
+			JFI = JFI_guids(oplist, rlist);
 		}
 		
 		return JFI;
@@ -99,50 +105,218 @@ public class Utilities {
 		return JFI;
 	}
 	
+	private static double JFI_guids(Queue<Operation> oplist, List<Region> rlist) {
+		
+		long guids = 0, guids_square = 0;
+				
+		checkTouchesPerRegion(rlist, oplist);
+		
+		for (Region r : rlist) {
+			guids += r.getGUIDs().size();
+			guids_square += Math.pow(r.getGUIDs().size(), 2);			
+		}
+
+		double JFI = Math.pow(guids, 2) / ( rlist.size() * guids_square );
+		
+		return JFI;
+	}
+	
+	public static Map<String, Double> JFI_touches_and_guids(Queue<Operation> oplist, List<Region> rlist) {
+		
+		Map<String, Double> output = new HashMap<String, Double>(2);
+		
+		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0, guids = 0, guids_square = 0;
+		
+		checkTouchesPerRegion(rlist, oplist);
+		
+		for (Region r : rlist) {			
+			up_touches += r.getUpdateTouches();
+			s_touches += r.getSearchTouches();
+			guids += r.getGUIDs().size();
+			upsquare += Math.pow(r.getUpdateTouches(), 2);
+			ssquare += Math.pow(r.getSearchTouches(), 2);
+			guids_square += Math.pow(r.getGUIDs().size(), 2);			
+		}
+		
+		double JU = 0.0, JS = 0.0;
+		
+		if (up_touches != 0)
+			JU = Math.pow(up_touches, 2) / ( rlist.size() * upsquare );
+		
+		if (s_touches != 0)
+			JS = Math.pow(s_touches , 2) / ( rlist.size() * ssquare  );
+								
+		int num_searches = 0;
+		for (Operation op : oplist)
+			if (op instanceof Search)
+				num_searches++;
+								
+		double RHO = (double) num_searches / oplist.size();
+						
+		double JFI_touches = ( RHO * JS ) + ( (1 - RHO) * JU );
+		
+		double JFI_guids = Math.pow(guids, 2) / ( rlist.size() * guids_square );
+		
+		output.put("touches", JFI_touches);
+		output.put("guids", JFI_guids);
+		
+		return output;
+		
+	}
+	
+	public static Map<String, Double> JFI(Queue<Operation> oplist, List<Machine> mlist) {
+		
+		Map<String, Double> output = new HashMap<String, Double>(2);
+		
+		long up_touches = 0, s_touches = 0, upsquare = 0, ssquare = 0, guids = 0, guids_square = 0;
+		
+		checkTouchesPerMachine(mlist, oplist);
+		
+		for (Machine m : mlist) {
+			up_touches += m.getUpdateTouches();
+			s_touches += m.getSearchTouches();
+			guids += m.getGUIDs().size();
+			upsquare += Math.pow(m.getUpdateTouches(), 2);
+			ssquare += Math.pow(m.getSearchTouches(), 2);
+			guids_square += Math.pow(m.getGUIDs().size(), 2);			
+		}
+		
+		double JU = 0.0, JS = 0.0;
+		
+		if (up_touches != 0)
+			JU = Math.pow(up_touches, 2) / ( mlist.size() * upsquare );
+		
+		if (s_touches != 0)
+			JS = Math.pow(s_touches , 2) / ( mlist.size() * ssquare  );
+								
+		int num_searches = 0;
+		for (Operation op : oplist)
+			if (op instanceof Search)
+				num_searches++;
+								
+		double RHO = (double) num_searches / oplist.size();
+						
+		double JFI_touches = ( RHO * JS ) + ( (1 - RHO) * JU );
+		
+		double JFI_guids = Math.pow(guids, 2) / ( mlist.size() * guids_square );
+		
+		output.put("touches", JFI_touches);
+		output.put("guids", JFI_guids);
+	
+		return output;
+	}
+	
 	public static List<Region> copyRegions(List<Region> regions) {
 		List<Region> copy = new ArrayList<Region>(regions.size());
-		for (Region r : regions)
-			copy.add(new Region(r.getName(),r.getPairs()));
+		for (Region r : regions) {
+			copy.add(new Region(r.getName(), r.getPairs()));
+		}
 		return copy;
+	}
+	
+	public static List<Region> copyRegionsWithGUIDs(List<Region> regions) {
+		List<Region> copy = new ArrayList<Region>(regions.size());
+		for (Region r : regions) {
+			Region new_region = new Region(r.getName(), r.getPairs());
+			for (Map.Entry<Integer, Map<String, Double>> guid : r.getGUIDs().entrySet()) {
+				new_region.insertGuid(guid.getKey(), guid.getValue());
+			}
+			copy.add(new_region);
+		}
+		return copy;
+	}
+	
+	public static void copyRegionsRanges(List<Region> regionsWithRangesToBeSet, List<Region> regionsWithRangesToBeCopied) {
+		for (Region region : regionsWithRangesToBeSet) {
+			int regionIndex = regionsWithRangesToBeSet.indexOf(region);
+			for (Map.Entry<String, Range> pair : regionsWithRangesToBeCopied.get(regionIndex).getPairs().entrySet()) {
+				region.setPair(pair.getKey(), pair.getValue().getLow(), pair.getValue().getHigh());
+			}
+		}
+	}
+	
+	public static List<Region> buildNewRegions(int num_attr) {
+		
+		Map<String, Range> pairs = new HashMap<String, Range>(); // pairs attribute-range
+		
+		for (int i = 1; i <= num_attr; i++) {
+			pairs.put("A"+i, new Range(0.0, 1.0));
+		}
+		
+		Region region = new Region("R1", pairs);	
+		
+		List<Region> regions = new ArrayList<Region>();
+		regions.add(region);
+		
+		return regions;
+	}
+	
+	public static String printRegions(List<Region> regions) {
+		StringBuilder str = new StringBuilder("{ ");
+		for (Region region : regions) {
+			str.append(region.toString());
+			str.append(" ");
+		}
+		str.append("}");
+		return str.toString();
+	}
+	
+	private static double nextUniform(double low, double high, Random rnd) {
+		double val;
+		if (low > high) {
+			do {
+				val = rnd.nextDouble();
+			} while(val > high && val < low);
+		} else {
+			val = low + (high - low) * rnd.nextDouble();
+		}
+		return val;
 	}
 	
 	private static double nextExponential(double lambda, Random rnd) {
 		double val;
 		do {
 			val = Math.log(1-rnd.nextDouble())/(-lambda);
-		} while (val > 1);
+		} while (val < 0 || val > 1);
 		return val;
 	}
 	
 	private static double nextGaussian(double deviation, double mean, Random rnd) {
-		return rnd.nextGaussian()*deviation+mean;
+		double val;
+		do {
+			val = rnd.nextGaussian()*deviation+mean;
+		} while (val < 0 || val > 1);
+		return val;
 	}
 	
-	private static double nextVal(String dist, Random rnd) {
+	private static double nextVal(String dist, Map<String, Double> distParams, Random rnd) {
 		double val;
 		switch(dist.toLowerCase()) {	
 			case "normal":
 			case "gaussian":
-				val = nextGaussian(0.15, 0.5, rnd);
+				double deviation = distParams.get("deviation");
+				double mean = distParams.get("mean");
+				val = nextGaussian(deviation, mean, rnd);
 				break;
 			case "exponential":
-				val = nextExponential(1, rnd);
+				double lambda = distParams.get("lambda");
+				val = nextExponential(lambda, rnd);
 				break;
 			case "uniform":
 			default:
-				val = rnd.nextDouble();
+				double low = distParams.get("low");
+				double high = distParams.get("high");
+				val = nextUniform(low, high, rnd);
 				break;
 		}
 		return val;
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static void generateOperations(int updateQty, int searchQty, int attrQty, int guidMaxQty, String distribution, String fileName, Random rnd) {
+	public static void generateOperations(int updateQty, int searchQty, int attrQty, int guidMaxQty, Map<Integer, Map<String, Double>> guids, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, String fileName, Random rnd) {
 		
 		// Creates a JSONArray for operations
 		JSONArray operations = new JSONArray();
-		
-		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
 		
 		int numSearches = 0, numUpdates = 0;
 				
@@ -157,13 +331,13 @@ public class Utilities {
 			
 			if (update) {
 				newOperation.put("Id", "U"+(++numUpdates));
-				generateUpdate(attrQty, guidMaxQty, distribution, guids, newOperation, rnd);
+				generateUpdate(attrQty, guidMaxQty, distribution.get("update"), distParams.get("update"), guids, newOperation, rnd);
 				operations.add(newOperation);
 			} 
 			
 			if (search) {
 				newOperation.put("Id", "S"+(++numSearches));
-				generateSearch(attrQty, distribution, newOperation, rnd);
+				generateSearch(attrQty, distribution.get("search"), distParams.get("search"), newOperation, rnd);
 				operations.add(newOperation);
 			}
 			
@@ -187,7 +361,7 @@ public class Utilities {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static void generateUpdate(int attrQty, int guidMaxQty, String distribution, Map<Integer, Map<String, Double>> guids, JSONObject newOperation, Random rnd) {
+	private static void generateUpdate(int attrQty, int guidMaxQty, Map<Integer, String> distribution, Map<Integer, Map<String, Double>> distParams, Map<Integer, Map<String, Double>> guids, JSONObject newOperation, Random rnd) {
 				
 		int guid = rnd.nextInt(guidMaxQty) + 1;
 
@@ -216,7 +390,7 @@ public class Utilities {
 			updateAttrValPairs.add(pair);
 			
 			// new value for this attribute
-			double v = nextVal(distribution, rnd);
+			double v = nextVal(distribution.get(i), distParams.get(i), rnd);
 			
 			pair = new LinkedHashMap<String, Object>(2);
 			
@@ -236,15 +410,15 @@ public class Utilities {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static void generateSearch(int attrQty, String distribution, JSONObject newOperation, Random rnd) {
+	private static void generateSearch(int attrQty, Map<Integer, String> distribution, Map<Integer, Map<String, Double>> distParams, JSONObject newOperation, Random rnd) {
 		
 		// Creates a JSONArray for Attribute-Range Pairs
 		JSONArray searchAttrRangePairs = new JSONArray();
 		
 		for (int i = 1; i <= attrQty; i++) {
 			
-			double v1 = nextVal(distribution, rnd);
-			double v2 = nextVal(distribution, rnd);
+			double v1 = nextVal(distribution.get(i), distParams.get(i), rnd);
+			double v2 = nextVal(distribution.get(i), distParams.get(i), rnd);
 			
 			Map<String, Double> rangeMap = new LinkedHashMap<String, Double>(2);
 			
@@ -355,6 +529,99 @@ public class Utilities {
 		}
 
 		return operations;
+		
+	}
+	
+	/* For each type operation and for each attribute it picks a distribution and sets its parameters. */
+	public static void generateRandomDistribution(int num_attr, ArrayList<String> possibleDistributions, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+		
+		_generateRandomDistribution("update", num_attr, possibleDistributions, distribution, distParams, rnd);
+		_generateRandomDistribution("search", num_attr, possibleDistributions, distribution, distParams, rnd);
+		
+	}
+	
+	private static void _generateRandomDistribution(String operation, int num_attr, ArrayList<String> possibleDistributions, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+		
+		Map<Integer, String> operationDist = new TreeMap<Integer, String>();
+		Map<Integer, Map<String, Double>> operationDistParams = new TreeMap<Integer, Map<String, Double>>();
+		for (int i = 1; i <= num_attr; i++) {
+			String dist = possibleDistributions.get(rnd.nextInt(possibleDistributions.size())).toLowerCase();
+			operationDist.put(i, dist);
+			Map<String, Double> attrDistParams = new HashMap<String, Double>();
+			if (dist.equals("uniform")) {
+				attrDistParams.put("low", rnd.nextDouble());
+				attrDistParams.put("high", rnd.nextDouble());
+			} else if (dist.equals("normal") || dist.equals("gaussian")) {
+				double deviation;
+				do { deviation = rnd.nextDouble(); } while (deviation == 0);
+				attrDistParams.put("deviation", deviation);
+				attrDistParams.put("mean", rnd.nextDouble());
+			} else if (dist.equals("exponential")) {
+				double lambda;
+				do { lambda = 2 * rnd.nextDouble(); } while (lambda == 0);
+				attrDistParams.put("lambda", lambda);
+			}
+			operationDistParams.put(i, attrDistParams);
+		}
+		distribution.put(operation, operationDist);
+		distParams.put(operation, operationDistParams);
+		
+	}
+	
+	public static Map<String, Map<Integer, String>> pickRandomDistribution(int num_attr, ArrayList<String> possibleDistributions, Random rnd) {
+		
+		Map<String, Map<Integer, String>> distribution = new HashMap<String, Map<Integer, String>>();
+		
+		String[] operations = {"update", "search"};
+		
+		for (String operation : operations) {
+			
+			Map<Integer, String> operationDist = new TreeMap<Integer, String>();
+			
+			for (int i = 1; i <= num_attr; i++) {
+				
+				String dist = possibleDistributions.get(rnd.nextInt(possibleDistributions.size())).toLowerCase();
+				operationDist.put(i, dist);
+				
+			}
+			distribution.put(operation, operationDist);
+			
+		}
+		
+		return distribution;
+		
+	}
+	
+	/* Given the distribution for each type of operation and for each attribute it randomly sets its parameters */
+	public static void generateRandomDistribution(int num_attr, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+		
+		_generateRandomDistribution("update", num_attr, distribution, distParams, rnd);
+		_generateRandomDistribution("search", num_attr, distribution, distParams, rnd);
+		
+	}
+	
+	private static void _generateRandomDistribution(String operation, int num_attr, Map<String, Map<Integer, String>> distribution, Map<String, Map<Integer, Map<String, Double>>> distParams, Random rnd) {
+		
+		Map<Integer, Map<String, Double>> operationDistParams = new TreeMap<Integer, Map<String, Double>>();
+		for (int i = 1; i <= num_attr; i++) {
+			String dist = distribution.get(operation).get(i);
+			Map<String, Double> attrDistParams = new HashMap<String, Double>();
+			if (dist.equals("uniform")) {
+				attrDistParams.put("low", rnd.nextDouble());
+				attrDistParams.put("high", rnd.nextDouble());
+			} else if (dist.equals("normal") || dist.equals("gaussian")) {
+				double deviation;
+				do { deviation = rnd.nextDouble(); } while (deviation == 0);
+				attrDistParams.put("deviation", deviation);
+				attrDistParams.put("mean", rnd.nextDouble());
+			} else if (dist.equals("exponential")) {
+				double lambda;
+				do { lambda = 2 * rnd.nextDouble(); } while (lambda == 0);
+				attrDistParams.put("lambda", lambda);
+			}
+			operationDistParams.put(i, attrDistParams);
+		}
+		distParams.put(operation, operationDistParams);
 		
 	}
 	
@@ -493,19 +760,17 @@ public class Utilities {
 		
 		clear_regions_touches(regions);
 		
-		Map<Integer, Map<String, Double>> guids = new TreeMap<Integer, Map<String, Double>>();
-		
 		for (Operation op : oplist) {
 			
-			if (op instanceof Update) {	checkUpdateTouchesPerRegion(regions, guids, (Update)op); }
+			if (op instanceof Update) {	checkUpdateTouchesPerRegion(regions, (Update)op); }
 			
-			if (op instanceof Search) {	checkSearchTouchesPerRegion(regions, guids, (Search)op); }
+			if (op instanceof Search) {	checkSearchTouchesPerRegion(regions, (Search)op); }
 			
 		}
 		
 	}
 	
-	private static void checkUpdateTouchesPerRegion(List<Region> regions, Map<Integer, Map<String, Double>> guids, Update up) {
+	private static void checkUpdateTouchesPerRegion(List<Region> regions, Update up) {
 		
 		int guid = up.getGuid();
 		
@@ -514,39 +779,18 @@ public class Utilities {
 		// I) This first iteration over regions will look for touches due to previous GUID's positions
 		for (Region region : regions) {
 
-			boolean previouslyInRegion = true;
-			int count = 0;
+			boolean previouslyInRegion = region.hasThisGuid(guid);
 
-			// Checks whether this update's GUID is already in this region
-			for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
-
-				if (!attr.getKey().contains("'")) { continue; } // here we just look into its guid attributes, i.e., the attributes ending with '
-
-				String guidAttrKey = attr.getKey().substring(0, attr.getKey().length()-1);    
-				double guidAttrVal = attr.getValue();
-
-				if (region.getPairs().containsKey(guidAttrKey)) { // check the region's range for this attribute
-					
-					double regionRangeStart = region.getPairs().get(guidAttrKey).getLow(); 
-					double regionRangeEnd   = region.getPairs().get(guidAttrKey).getHigh(); 
-
-					if (guidAttrVal < regionRangeStart || guidAttrVal >= regionRangeEnd) { // checks whether guid is in this region
-						previouslyInRegion = false;
-						break;
-					}
-				}
-			}
-
-			// If so ...
+			// If guid is in this region
 			if (previouslyInRegion) {
 				
-				count++; // counts a touch
-				if (region.hasThisGuid(guid)) { region.removeGuid(guid); } // removes it from this region's guid list
+				region.removeGuid(guid); // removes it from this region's guid list 
+				
 				previousRegion = region;
 				
-				// Sets this region's update touch count
+				// Counts one touch
 				int previous_count = region.getUpdateTouches();
-				region.setUpdateTouches(previous_count+count);
+				region.setUpdateTouches(previous_count+1);
 				
 				break;
 				
@@ -558,12 +802,9 @@ public class Utilities {
 		for (Region region : regions) {
 
 			boolean comingToRegion = true;
-			int count = 0;
 
 			// Checks whether this update moves a GUID to this region
 			for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
-
-				if (attr.getKey().contains("'")) { continue; } // here we just look into this update attributes, i.e., the attributes not ending with '
 
 				String updateAttrKey = attr.getKey();
 				double updateAttrVal = attr.getValue();
@@ -589,14 +830,13 @@ public class Utilities {
 					if (up_attr.getKey().contains("'")) { continue; } // ignore attributes ending with ', as it's old info
 					guid_attr.put(up_attr.getKey(), up_attr.getValue());
 				}
-				guids.put(guid, guid_attr);
+				region.insertGuid(guid, guid_attr); // adds it to this region's guid list
 
-				region.insertGuid(guid); // adds it to this region's guid list
-				if (!region.equals(previousRegion)) { count++; } // if it is coming from another region, counts one more touch
-				
-				// Sets this region's update touch count
-				int previous_count = region.getUpdateTouches();
-				region.setUpdateTouches(previous_count+count);
+				// if it is coming from another region, counts one more touch
+				if (!region.equals(previousRegion)) {
+					int previous_count = region.getUpdateTouches();
+					region.setUpdateTouches(previous_count+1);
+				}
 				
 				break;
 
@@ -605,7 +845,7 @@ public class Utilities {
 		}
 	}
 	
-	private static void checkSearchTouchesPerRegion(List<Region> regions, Map<Integer, Map<String, Double>> guids, Search s) {
+	private static void checkSearchTouchesPerRegion(List<Region> regions, Search s) {
 
 		for (Region region : regions) { // iterate over regions
 
@@ -637,16 +877,16 @@ public class Utilities {
 
 			if (isInRegion) {
 
-				for (int guid : region.getGUIDs()) { // iterate over this region's guids
+				for (int guid : region.getGUIDs().keySet()) { // iterate over this region's guids
 
 					boolean flag = true;
 
-					for (Map.Entry<String, Double> attr : guids.get(guid).entrySet()) { // iterate over this guid's attributes
+					for (Map.Entry<String, Double> attr : region.getGUIDs().get(guid).entrySet()) { // iterate over this guid's attributes
 
 						String guidAttrKey = attr.getKey();    
 						double guidAttrVal = attr.getValue();
 
-						if (s.getPairs().containsKey(guidAttrKey)) { // check the region's range for this attribute
+						if (s.getPairs().containsKey(guidAttrKey)) { // check the search range for this attribute
 						
 							double searchRangeStart = s.getPairs().get(guidAttrKey).getLow();
 							double searchRangeEnd   = s.getPairs().get(guidAttrKey).getHigh();
@@ -685,9 +925,425 @@ public class Utilities {
 	private static void clear_regions_touches(List<Region> regions) {
 		
 		for (Region r : regions) {
-			r.clearGUIDs();
 			r.setSearchTouches(0);
 			r.setUpdateTouches(0);
+		}
+		
+	}
+	
+	public static void checkTouchesPerMachine(List<Machine> machines, Queue<Operation> oplist) {
+		
+		clear_machines_touches(machines);
+		
+		for (Operation op : oplist) {
+			
+			if (op instanceof Update) {	checkUpdateTouchesPerMachine(machines, (Update)op); }
+			
+			if (op instanceof Search) {	checkSearchTouchesPerMachine(machines, (Search)op); }
+			
+		}
+		
+	}
+	
+	private static void checkUpdateTouchesPerMachine(List<Machine> machines, Update up) {
+		
+		int guid = up.getGuid();
+		
+		// uses consistent hashing to find the machine associated with this guid
+		HashFunction hf = Hashing.sha256();
+		HashCode hc = hf.newHasher().putInt(guid).hash();
+		int machine_index = Hashing.consistentHash(hc, machines.size());
+		Machine machine = machines.get(machine_index);
+		
+		// updates this GUID's attributes with info from this update operation
+		Map<String, Double> guid_attr = new HashMap<String, Double>();
+		for (Map.Entry<String, Double> up_attr : up.getAttributes().entrySet()) {
+			if (up_attr.getKey().contains("'")) { continue; } // ignore attributes ending with ', as it's old info
+			guid_attr.put(up_attr.getKey(), up_attr.getValue());
+		}
+		machine.insertGuid(guid, guid_attr); // adds it to this machines's guid list
+		
+		// counts one touch
+		int previous_count = machine.getUpdateTouches();
+		machine.setUpdateTouches(previous_count+1);
+		
+	}
+	
+	private static void checkSearchTouchesPerMachine(List<Machine> machines, Search s) {
+		
+		for (Machine m : machines) { // iterate over all machines
+			
+			int count = 0;
+			
+			for (Map.Entry<Integer, Map<String, Double>> guid : m.getGUIDs().entrySet()) { // iterate over this machine's guids
+				
+				boolean flag = true;
+
+				for (Map.Entry<String, Double> attr : guid.getValue().entrySet()) { // iterate over this guid's attributes
+
+					String guidAttrKey = attr.getKey();    
+					double guidAttrVal = attr.getValue();
+
+					if (s.getPairs().containsKey(guidAttrKey)) { // check the search range for this attribute
+					
+						double searchRangeStart = s.getPairs().get(guidAttrKey).getLow();
+						double searchRangeEnd   = s.getPairs().get(guidAttrKey).getHigh();
+
+						if (searchRangeStart > searchRangeEnd) {
+							if (guidAttrVal < searchRangeStart && guidAttrVal > searchRangeEnd) { flag = false; break; }
+						} else {
+							if (guidAttrVal < searchRangeStart || guidAttrVal > searchRangeEnd) { flag = false; break; }
+						}
+					}
+
+				}
+
+				if (flag) { count++; }
+				
+			}
+			
+			// Sets this machine's search touch counter
+			int previous_count = m.getSearchTouches();
+			m.setSearchTouches(previous_count+count);
+			
+		}
+		
+	}
+	
+	private static void clear_machines_touches(List<Machine> machines) {
+		
+		for (Machine m : machines) {
+			m.setSearchTouches(0);
+			m.setUpdateTouches(0);
+		}
+		
+	}
+	
+	
+	/* Computes and returns the number of exchange messages between the controller and each machine when adopting replicate-at-all strategy */
+	public static Map<Integer, Integer> messagesCounterReplicateAtAll(int num_machines, Queue<Operation> oplist) {
+
+		Map<Integer, Integer> messagesCounterPerMachine = new TreeMap<Integer, Integer>();
+
+		// initializes messages counter per machine
+		for (int i = 1; i <= num_machines; i++) {
+			messagesCounterPerMachine.put(i, 0);
+		}
+
+		for (Operation op : oplist) {
+
+			if (op instanceof Update) { // controller sends a message to every machine
+
+				for (Map.Entry<Integer, Integer> e : messagesCounterPerMachine.entrySet()) {
+
+					messagesCounterPerMachine.put(e.getKey(), e.getValue()+1);
+
+				}
+
+			} else if (op instanceof Search) { // controller sends a message to one machine
+
+				int max = num_machines, min = 1;
+				int machine = (new Random()).nextInt((max - min) + 1) + min;
+
+				messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
+
+			}
+			
+		}
+		
+		return messagesCounterPerMachine;
+
+	}
+	
+	/* Computes and returns the number of exchange messages between the controller and each machine when adopting query-all strategy */
+	public static Map<Integer, Integer> messagesCounterQueryAll(int num_machines, String axis, Queue<Operation> oplist) {
+
+		Map<Integer, Integer> messagesCounterPerMachine = new TreeMap<Integer, Integer>();
+
+		// initializes messages counter per machine
+		for (int i = 1; i <= num_machines; i++) {
+			messagesCounterPerMachine.put(i, 0);
+		}
+
+		for (Operation op : oplist) {
+
+			if (op instanceof Update) { // controller sends a message to one specific machine
+
+				Update up = (Update)op;
+				int guid = up.getGuid();
+				
+				// uses consistent hashing to find the machine associated with this guid
+				HashFunction hf = Hashing.sha256();
+				HashCode hc = hf.newHasher().putInt(guid).hash();
+				int machine_index = Hashing.consistentHash(hc, num_machines);
+				
+				messagesCounterPerMachine.put(machine_index+1, messagesCounterPerMachine.get(machine_index+1)+1);
+
+			} else if (op instanceof Search) { // controller sends messages to all machines
+				
+				for (Map.Entry<Integer, Integer> e : messagesCounterPerMachine.entrySet()) {
+
+					messagesCounterPerMachine.put(e.getKey(), e.getValue()+1);
+
+				}
+
+			}
+
+		}
+
+		return messagesCounterPerMachine;
+
+	}
+	
+	/* Computes and returns the number of exchange messages between the controller and each machine when adopting hyperspace strategy */
+	public static Map<Integer, Integer> messagesCounterHyperspace(int num_machines, Queue<Operation> oplist, List<Region> regions) {
+
+		Map<Integer, Integer> messagesCounterPerMachine = new TreeMap<Integer, Integer>();
+
+		// initializes messages counter per machine
+		for (int i = 1; i <= num_machines; i++) {
+			messagesCounterPerMachine.put(i, 0);
+		}
+
+		for (Operation op : oplist) {
+
+			if (op instanceof Update) { 
+
+				Update up = (Update)op;
+
+				for (Region r : regions) { // iterate over regions
+
+					// Checks whether this update is in this region regarding its attribute or its guid
+					boolean flag_attr = true, flag_guid = true;
+										
+					for (Map.Entry<String, Double> attr : up.getAttributes().entrySet()) { // iterate over this update attributes
+						
+						boolean isGUID = attr.getKey().contains("'");
+						
+						String attrKey;
+						if (isGUID) {
+							attrKey = attr.getKey().substring(0, attr.getKey().length()-1);
+						} else {
+							attrKey = attr.getKey();
+						}
+						double attrVal = attr.getValue();
+
+						if (r.getPairs().containsKey(attrKey)) { // check the region's range for this attribute
+
+							double region_low_range = r.getPairs().get(attrKey).getLow();
+							double region_high_range = r.getPairs().get(attrKey).getHigh();
+
+							if (attrVal < region_low_range || attrVal >= region_high_range) { // check whether attribute value is inside this region range
+								if (isGUID) {
+									flag_guid = false;
+								} else {
+									flag_attr = false;
+								}
+							}
+
+						}
+
+					}
+
+					if (flag_attr || flag_guid) {
+
+						int region_index = regions.indexOf(r)+1;
+						for (int machine = (int)((region_index-1)*Math.sqrt(num_machines))+1; machine <= (region_index*Math.sqrt(num_machines)); machine++) {
+							messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
+						}
+
+					}
+
+				}
+
+			} else if (op instanceof Search) {
+
+				Search s = (Search)op;
+
+				for (Region r : regions) { // iterate over regions
+
+					boolean flag = true;
+
+					for (Map.Entry<String, Range> search_pair : s.getPairs().entrySet()) { // iterate over this search pairs
+
+						String search_attr = search_pair.getKey();
+						double search_low_range = search_pair.getValue().getLow();
+						double search_high_range = search_pair.getValue().getHigh();
+
+						if (r.getPairs().containsKey(search_attr)) { // check the region's range for this attribute 
+
+							double region_low_range = r.getPairs().get(search_attr).getLow();
+							double region_high_range = r.getPairs().get(search_attr).getHigh();
+
+							if (search_low_range > search_high_range) {
+
+								if (search_low_range >= region_high_range && search_high_range < region_low_range) {
+									flag = false;
+									break;
+								}
+
+							} else {
+
+								if (search_low_range >= region_high_range || search_high_range < region_low_range) { // check whether both region & search ranges overlap
+									flag = false;
+									break;
+								}
+
+							}
+
+						}
+
+					}
+
+					if (flag) {
+
+						int region_index = regions.indexOf(r)+1;
+						
+						int max = (int)(region_index*Math.sqrt(num_machines)), min = (int)((region_index-1)*Math.sqrt(num_machines))+1;
+						int machine = (new Random()).nextInt((max - min) + 1) + min;
+						
+						messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+1);
+
+					}
+
+				}
+
+			}
+
+		}
+
+		return messagesCounterPerMachine;
+		
+	}
+	
+	/* Look for GUIDs that must leave or enter a region because of a repartition. It can also compute the number of exchange messages because of a repartition.
+	 * If countMessagesFlag = 0, it does not compute the number of messages.
+	 * If countMessagesFlag = 1, the list of guids leaving or coming to a region is counted as one message to that region.
+	 * If countMessagesFlag = 2, each guid leaving or coming to a region is counted as one message to that region. */
+	public static void checkGUIDsAfterRepartition(Map<Integer, Integer> messagesCounterPerMachine, List<Region> regions, int countMessagesFlag) {
+		
+		Map<Integer, Map<String, Double>> leaving_guids = new TreeMap<Integer, Map<String, Double>>();
+		Map<Region, List<Integer>> outgoing_regions = new HashMap<Region, List<Integer>>();
+		Map<Region, List<Integer>> incoming_regions = new HashMap<Region, List<Integer>>();
+		
+		for (Region r : regions) {
+			outgoing_regions.put(r, new ArrayList<Integer>());
+			incoming_regions.put(r, new ArrayList<Integer>());
+		}
+		
+		// I) Checks guids that must leave this region because of a repartition 
+		for (Region r : regions) { // iterates over regions
+			
+			Map<Integer, Map<String, Double>> region_guids = new TreeMap<Integer, Map<String, Double>>(r.getGUIDs());
+			
+			for (int guid : region_guids.keySet()) { // iterates over this region's guids
+			
+				boolean guid_belongs_to_this_region = true;
+				
+				for (Map.Entry<String, Double> attr : region_guids.get(guid).entrySet()) { // iterates over this guid's attributes
+					
+					String guidAttrKey = attr.getKey();    
+					double guidAttrVal = attr.getValue();
+					
+					if (r.getPairs().containsKey(guidAttrKey)) { // checks region's range for this attribute
+						
+						double regionLowRange  = r.getPairs().get(guidAttrKey).getLow();
+						double regionHighRange = r.getPairs().get(guidAttrKey).getHigh();
+						
+						if (guidAttrVal < regionLowRange || guidAttrVal >= regionHighRange) { // checks whether attribute value is inside this region range
+							guid_belongs_to_this_region = false;
+							break;
+						} 
+						
+					}
+					
+				}
+				
+				if (!guid_belongs_to_this_region) { // if guid doesn't belong to this region anymore
+								
+					// removes guid from this region
+					leaving_guids.put(guid, region_guids.get(guid));
+					r.removeGuid(guid);
+					
+					outgoing_regions.get(r).add(guid);
+					
+				}
+				
+			}
+			
+		}
+		
+		// II) Checks the right region for each guid leaving its region
+		for (int guid : leaving_guids.keySet()) { // iterates over guids leaving regions
+			
+			for (Region r : regions) { // iterates over regions
+				
+				boolean guid_belongs_to_this_region = true;
+				
+				for (Map.Entry<String, Double> attr : leaving_guids.get(guid).entrySet()) { // iterates over this guid's attributes
+					
+					String guidAttrKey = attr.getKey();    
+					double guidAttrVal = attr.getValue();
+					
+					if (r.getPairs().containsKey(guidAttrKey)) { // checks region's range for this attribute
+						
+						double regionLowRange  = r.getPairs().get(guidAttrKey).getLow();
+						double regionHighRange = r.getPairs().get(guidAttrKey).getHigh();
+						
+						if (guidAttrVal < regionLowRange || guidAttrVal >= regionHighRange) { // checks whether attribute value is inside this region range
+							guid_belongs_to_this_region = false;
+							break;
+						} 
+						
+					}
+					
+				}
+				
+				if (guid_belongs_to_this_region) { // if guid now belongs to this region
+								
+					// inserts guid into this region
+					r.insertGuid(guid, leaving_guids.get(guid));
+					
+					incoming_regions.get(r).add(guid);
+					
+					break;
+					
+				}
+				
+			}
+			
+		}
+		
+		// III) Counts the number of messages per region 
+		for (Region r : regions) {
+			
+			int num_of_messages; // number of messages per region
+			
+			switch (countMessagesFlag) {
+			case 1:
+				num_of_messages = 0;
+				if (outgoing_regions.get(r).size() > 0)
+					num_of_messages += 1;
+				if (incoming_regions.get(r).size() > 0)
+					num_of_messages += 1;
+				break;
+			case 2:
+				num_of_messages = outgoing_regions.get(r).size() + incoming_regions.get(r).size();
+				break;
+			default:
+				num_of_messages = 0;
+				break;
+			}
+			
+			if (num_of_messages > 0) {
+				int num_machines = messagesCounterPerMachine.size();
+				int region_index = regions.indexOf(r)+1;
+				for (int machine = (int)((region_index-1)*Math.sqrt(num_machines))+1; machine <= (region_index*Math.sqrt(num_machines)); machine++) {
+					// increments the number of messages for each machine associated with this region
+					messagesCounterPerMachine.put(machine, messagesCounterPerMachine.get(machine)+num_of_messages);
+				}
+			}
+			
 		}
 		
 	}

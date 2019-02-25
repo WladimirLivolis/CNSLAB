@@ -31,16 +31,16 @@ public class Update implements Operation{
 	}
 	
 	public String toString() {
-		StringBuilder str = new StringBuilder("[");
-		str.append(guid+",");
+		StringBuilder str = new StringBuilder("<");
+		str.append(guid+",[ ");
 		for (Map.Entry<String, Double> attr : attributes.entrySet()) {
-			str.append("\n(");
+			str.append("(");
 			str.append(attr.getKey());
 			str.append(",");
 			str.append(attr.getValue());
-			str.append("),");
+			str.append(") ");
 		}
-		str.append("\n]");
+		str.append("]>");
 		return str.toString();
 	}
 

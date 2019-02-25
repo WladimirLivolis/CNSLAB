@@ -30,18 +30,18 @@ public class Search implements Operation {
 	}
 	
 	public String toString() {
-		StringBuilder str = new StringBuilder("[");
+		StringBuilder str = new StringBuilder("[ ");
 		for (Map.Entry<String, Range> pair : pairs.entrySet()) {
-			str.append("\n(");
+			str.append("(");
 			str.append(pair.getKey());
 			str.append(",[");
 			str.append(pair.getValue().getLow());
 			str.append(",");
 			str.append(pair.getValue().getHigh());
 			str.append("]");
-			str.append("),");
+			str.append(") ");
 		}
-		str.append("\n]");
+		str.append("]");
 		return str.toString();
 	}
 
