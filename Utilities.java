@@ -478,23 +478,38 @@ public class Utilities {
 		// Creates a JSONArray for Attribute-Range Pairs
 		JSONArray searchAttrRangePairs = new JSONArray();
 		
-		for (int i = 1; i <= attrQty; i++) {
+		// minimum and maximum number of attributes a search can specify
+		int min_num_attr = 3, max_num_attr = attrQty;
+		
+		// number of attributes this search will specify
+		int num_attr = rnd.nextInt((max_num_attr - min_num_attr) + 1) + min_num_attr;
+		
+		int set_attr = 0;
+		
+		ArrayList<Integer> set_attrs = new ArrayList<Integer>();
+		
+		while (set_attr < num_attr) {
 			
-			double v1 = nextVal(distribution.get(i), distParams.get(i), rnd);
-			double v2 = nextVal(distribution.get(i), distParams.get(i), rnd);
+			int attr;
+			do { attr = rnd.nextInt(attrQty) + 1; } while (set_attrs.contains(attr)); // make sure it picks always a new attribute
+			
+			double v1 = nextVal(distribution.get(attr), distParams.get(attr), rnd);
+			double v2 = nextVal(distribution.get(attr), distParams.get(attr), rnd);
 			
 			Map<String, Double> rangeMap = new LinkedHashMap<String, Double>(2);
-			
+
 			rangeMap.put("Start", v1);
 			rangeMap.put("End", v2);
-
+			
 			Map<String, Object> pair = new LinkedHashMap<String, Object>(2);
 
-			pair.put("Attribute", "A"+i);
+			pair.put("Attribute", "A"+attr);
 			pair.put("Range", rangeMap);
 			
 			searchAttrRangePairs.add(pair);
-
+			
+			set_attrs.add(attr);
+			set_attr++;
 		}
 		
 		newOperation.put("AttributeRangePairs", searchAttrRangePairs);

@@ -23,16 +23,18 @@ public class Main {
 			
 			pw = new PrintWriter(fileName);
 			
-			pw.println("# region\ttouches\tGUIDs");
+			pw.println("# region\tup_touches\ts_touches\ttouches\tGUIDs");
 			
 			for (Region r : regions) {
 				
 				int index = regions.indexOf(r)+1;
-					
-				double touches = r.getUpdateTouches()+r.getSearchTouches();
+				
+				double up_touches = r.getUpdateTouches();
+				double s_touches = r.getSearchTouches();
+				double touches = up_touches + s_touches;
 				double guids = r.getGUIDs().size();
 				
-				pw.println(index+"\t"+touches+"\t"+guids);
+				pw.println(index+"\t"+up_touches+"\t"+s_touches+"\t"+touches+"\t"+guids);
 				
 			}
 			
@@ -63,8 +65,8 @@ public class Main {
 			
 			pw = new PrintWriter(fileName);
 			
-			pw.println("# region\ttouches\tGUIDs");
-			
+			pw.println("# region\tup_touches\ts_touches\ttouches\tGUIDs");			
+
 			for (List<Region> regions : subspaces) {
 				
 				int subspace_index = subspaces.indexOf(regions)+1;
@@ -74,11 +76,13 @@ public class Main {
 					int region_index = regions.indexOf(r)+1;
 					
 					int real_index = (subspace_index-1)*regions.size() + region_index;
-						
-					double touches = r.getUpdateTouches()+r.getSearchTouches();
+					
+					double up_touches = r.getUpdateTouches();
+					double s_touches = r.getSearchTouches();
+					double touches = up_touches + s_touches;
 					double guids = r.getGUIDs().size();
 					
-					pw.println(real_index+"\t"+touches+"\t"+guids);
+					pw.println(real_index+"\t"+up_touches+"\t"+s_touches+"\t"+touches+"\t"+guids);
 					
 				}
 				
@@ -111,16 +115,18 @@ public class Main {
 			
 			pw = new PrintWriter(fileName);
 			
-			pw.println("# machine\ttouches\tGUIDs");
+			pw.println("# machine\tup_touches\ts_touches\ttouches\tGUIDs");
 			
 			for (Machine m : machines) {
 				
 				int index = machines.indexOf(m)+1;
-								
-				double touches = m.getUpdateTouches()+m.getSearchTouches();
+				
+				double up_touches = m.getUpdateTouches();
+				double s_touches = m.getSearchTouches();
+				double touches = up_touches + s_touches;
 				double guids = m.getGUIDs().size();
 				
-				pw.println(index+"\t"+touches+"\t"+guids);
+				pw.println(index+"\t"+up_touches+"\t"+s_touches+"\t"+touches+"\t"+guids);
 				
 			}
 			
@@ -185,7 +191,8 @@ public class Main {
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 1...");
-				Utilities.copyRegionsRanges(regions1, heuristic1.partition(op_window));
+//				Utilities.copyRegionsRanges(regions1, heuristic1.partition(op_window));
+				Utilities.copyRegionsRanges(regions1, heuristic1.partitionPickingARandomAttr(op_window));
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 2...");
@@ -308,7 +315,7 @@ public class Main {
 		possibleDistributions.add("uniform");
 		possibleDistributions.add("normal");
 		possibleDistributions.add("exponential");
-		
+	
 		for (int i = 1; i <= numOfEpochs; i++) {
 			System.out.println("["+LocalTime.now()+"] Generating testing sample "+i);
 			
@@ -359,7 +366,7 @@ public class Main {
 			System.out.println("["+LocalTime.now()+"] Done!");
 		}
 		// to here
-		*/ 
+		*/
 		
 		HeuristicV1 heuristic1 = new HeuristicV1(num_attr, num_mach);
 		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);

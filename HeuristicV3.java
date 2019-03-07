@@ -173,10 +173,15 @@ public class HeuristicV3 {
 
 			for (Map.Entry<Double, Integer> e : guidsPerPoint.entrySet()) {
 
-				double point = e.getKey();
-
-				double search_low_range  = s.getPairs().get(axis).getLow();
-				double search_high_range = s.getPairs().get(axis).getHigh();
+				double point = e.getKey(), search_low_range, search_high_range;
+				
+				if (s.getPairs().containsKey(axis)) {
+					search_low_range  = s.getPairs().get(axis).getLow();
+					search_high_range = s.getPairs().get(axis).getHigh();
+				} else {
+					search_low_range = 0;
+					search_high_range = 1;
+				}
 
 				boolean condition;
 
