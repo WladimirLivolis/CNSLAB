@@ -205,7 +205,7 @@ public class Main {
 				
 				System.out.println("["+LocalTime.now()+"] Calculating no. of exchange messages because of a repartition...");
 				Utilities.checkGUIDsAfterRepartition(cns, regions1, 1);
-				Utilities.checkGUIDsAfterRepartition(null, regions2, 1);
+				Utilities.checkGUIDsAfterRepartition(null, regions2, 0);
 				Utilities.checkGUIDsAfterRepartition(hyperspace, regions3, 1);
 				System.out.println("["+LocalTime.now()+"] Done!");
 
