@@ -477,7 +477,7 @@ public class Main {
 			
 			pw_replicateAll = new PrintWriter("./output/replicateAll_msgs_"+rho_str+"_"+experiment_number+".txt");
 			pw_queryAll = new PrintWriter("./output/queryAll_msgs_"+rho_str+"_"+experiment_number+".txt");
-			pw_hyperspace = new PrintWriter("./output/hyperspace1_msgs_"+rho_str+"_"+experiment_number+".txt");
+			pw_hyperspace = new PrintWriter("./output/hyperspace_msgs_"+rho_str+"_"+experiment_number+".txt");
 			pw_hyperdex = new PrintWriter("./output/hyperdex_msgs_"+rho_str+"_"+experiment_number+".txt");
 			pw_cns = new PrintWriter("./output/cns_msgs_"+rho_str+"_"+experiment_number+".txt");
 			
