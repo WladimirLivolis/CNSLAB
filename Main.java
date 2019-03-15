@@ -147,7 +147,7 @@ public class Main {
 		
 	}
 	
-	private static void testHeuristicsAgainstNewOperations(String RHO, int experiment_number, List<String> sampleFileNames, List<Region> regions1, List<Region> regions2, List<Region> regions3, List<Region> regions4, List<Machine> machines5, List<List<Region>> subspaces6, HeuristicV1 heuristic1, HeuristicV2 heuristic2, HeuristicV3 heuristic3, Map<String, List<Double>> jfi_list_h1, Map<String, List<Double>> jfi_list_h2, Map<String, List<Double>> jfi_list_h3, Map<String, List<Double>> jfi_list_h4, Map<String, List<Double>> jfi_list_h5, Map<String, List<Double>> jfi_list_h6, int num_machines, String axis, Map<Integer, Integer> messagesPerMachineReplicateAll, Map<Integer, Integer> messagesPerMachineQueryAll, Map<Integer, Integer> messagesPerMachineHyperspace, Map<Integer, Integer> messagesPerMachineHyperdex, Map<Integer, Integer> messagesPerMachineCNS) {
+	private static void testHeuristicsAgainstNewOperations(String RHO, int experiment_number, List<String> sampleFileNames, List<Region> regions1, List<Region> regions2, List<Region> regions3, List<Region> regions4, List<Machine> machines5, List<List<Region>> subspaces6, HeuristicV1_CNS heuristic1, HeuristicV2_Quantiles heuristic2, HeuristicV3_QuantilesGK heuristic3, Map<String, List<Double>> jfi_list_h1, Map<String, List<Double>> jfi_list_h2, Map<String, List<Double>> jfi_list_h3, Map<String, List<Double>> jfi_list_h4, Map<String, List<Double>> jfi_list_h5, Map<String, List<Double>> jfi_list_h6, int num_machines, String axis, Map<Integer, Integer> messagesPerMachineReplicateAll, Map<Integer, Integer> messagesPerMachineQueryAll, Map<Integer, Integer> messagesPerMachineHyperspace, Map<Integer, Integer> messagesPerMachineHyperdex, Map<Integer, Integer> messagesPerMachineCNS) {
 		
 		// Reading operations from sample files
 		Queue<Operation> oplist = new LinkedList<Operation>();
@@ -189,8 +189,8 @@ public class Main {
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 1...");
-//				Utilities.copyRegionsRanges(regions1, heuristic1.partition(op_window));
-				Utilities.copyRegionsRanges(regions1, heuristic1.partitionPickingARandomAttr(op_window));
+				Utilities.copyRegionsRanges(regions1, heuristic1.partition(op_window));
+//				Utilities.copyRegionsRanges(regions1, heuristic1.partitionPickingARandomAttr(op_window));
 				System.out.println("["+LocalTime.now()+"] Done!");
 				
 				System.out.println("["+LocalTime.now()+"] Repartitioning using Heuristic 2...");
@@ -363,11 +363,11 @@ public class Main {
 		// to here
 		*/
 		
-		HeuristicV1 heuristic1 = new HeuristicV1(num_attr, num_mach);
-		HeuristicV2 heuristic2 = new HeuristicV2(num_attr, num_mach, axis, metric);
-		HeuristicV3 heuristic3 = new HeuristicV3(num_attr, num_mach, axis, metric, window_size, e);
+		HeuristicV1_CNS heuristic1 = new HeuristicV1_CNS(num_attr, num_mach);
+		HeuristicV2_Quantiles heuristic2 = new HeuristicV2_Quantiles(num_attr, num_mach, axis, metric);
+		HeuristicV3_QuantilesGK heuristic3 = new HeuristicV3_QuantilesGK(num_attr, num_mach, axis, metric, window_size, e);
 		
-		HeuristicV1_5 heuristic1_5 = new HeuristicV1_5(num_attr, 3);
+		HeuristicV6_HyperDex heuristic6 = new HeuristicV6_HyperDex(num_attr, 3);
 		
 		/* PARTITIONING REGIONS */
 		
@@ -401,9 +401,9 @@ public class Main {
 	
 		// Heuristic 6 (Hyperdex)
 		List<List<Region>> subspaces6 = new ArrayList<List<Region>>();
-		subspaces6.addAll(heuristic1_5.partition(3));
+		subspaces6.addAll(heuristic6.partition(3));
 		System.out.println("\nHeuristic 6 (Hyperdex) regions:");
-		System.out.println(heuristic1_5.printSubspaces()+"\n");
+		System.out.println(heuristic6.printSubspaces()+"\n");
 		
 		/* TESTING HEURISTICS */
 		

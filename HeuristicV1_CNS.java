@@ -6,12 +6,12 @@ import java.util.Queue;
 import java.util.Random;
 import java.util.TreeMap;
 
-public class HeuristicV1 {
+public class HeuristicV1_CNS {
 	
 	private int num_machines;
 	private List<Region> regions;
 	
-	public HeuristicV1(int num_attr, int num_machines) {
+	public HeuristicV1_CNS(int num_attr, int num_machines) {
 		this.num_machines = num_machines;
 		regions = buildNewRegions(num_attr);
 	}
@@ -25,7 +25,7 @@ public class HeuristicV1 {
 	private List<Region> buildNewRegions(int num_attr) { // initially this heuristic sets its regions like Quantiles does
 		List<Region> regions = new ArrayList<Region>();
 		String axis = "A"+((new Random()).nextInt(num_attr)+1);
-		regions.addAll((new HeuristicV2(num_attr, num_machines, axis, "touches")).getRegions());
+		regions.addAll((new HeuristicV2_Quantiles(num_attr, num_machines, axis, "touches")).getRegions());
 		return regions;
 	}
 	

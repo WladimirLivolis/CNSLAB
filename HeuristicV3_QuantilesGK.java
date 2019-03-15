@@ -7,7 +7,7 @@ import java.util.TreeMap;
 import streaming.Block;
 import streaming.GKWindow;
 
-public class HeuristicV3 {
+public class HeuristicV3_QuantilesGK {
 	
 	private int num_machines;
 	private String axis;
@@ -20,7 +20,7 @@ public class HeuristicV3 {
 	private int w;
 	private double e;
 	
-	public HeuristicV3(int num_attr, int num_machines, String axis, String metric, int w, double e) {
+	public HeuristicV3_QuantilesGK(int num_attr, int num_machines, String axis, String metric, int w, double e) {
 		this.num_machines = num_machines;
 		this.axis = axis;
 		this.metric = metric;

@@ -4,18 +4,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class HeuristicV1_5 {
+public class HeuristicV6_HyperDex {
 
 	private int num_attr;
 	private List<Region> regions;
 	private List<List<Region>> subspaces;
 	
-	public HeuristicV1_5(int num_attr) {
+	public HeuristicV6_HyperDex(int num_attr) {
 		this.num_attr = num_attr;
 		regions = Utilities.buildNewRegions(num_attr);
 	}
 	
-	public HeuristicV1_5(int num_attr, int num_subspace_attr) {
+	public HeuristicV6_HyperDex(int num_attr, int num_subspace_attr) {
 		this.num_attr = num_attr;
 		subspaces = new ArrayList<List<Region>>();
 		for (int i = 1; i <= num_attr; i+=num_subspace_attr) {
