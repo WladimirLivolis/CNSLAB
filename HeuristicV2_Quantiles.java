@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.TreeMap;
 
-public class HeuristicV2 {
+public class HeuristicV2_Quantiles {
 	
 	private int num_machines;
 	private String axis;
@@ -14,7 +14,7 @@ public class HeuristicV2 {
 	private List<Region> regions;
 	private Map<Double, Double> quantiles;
 	
-	public HeuristicV2(int num_attr, int num_machines, String axis, String metric) {
+	public HeuristicV2_Quantiles(int num_attr, int num_machines, String axis, String metric) {
 		this.num_machines = num_machines;
 		this.axis = axis;
 		this.metric = metric;
@@ -195,10 +195,15 @@ public class HeuristicV2 {
 
 				for (Map.Entry<Double, Integer> e : guidsPerPoint.entrySet()) {
 
-					double point = e.getKey();
+					double point = e.getKey(), search_low_range, search_high_range;
 
-					double search_low_range  = s.getPairs().get(axis).getLow();
-					double search_high_range = s.getPairs().get(axis).getHigh();
+					if (s.getPairs().containsKey(axis)) {
+						search_low_range  = s.getPairs().get(axis).getLow();
+						search_high_range = s.getPairs().get(axis).getHigh();
+					} else {
+						search_low_range = 0;
+						search_high_range = 1;
+					}
 										
 					boolean condition;
 					

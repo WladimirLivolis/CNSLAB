@@ -7,7 +7,7 @@ import java.util.TreeMap;
 import streaming.Block;
 import streaming.GKWindow;
 
-public class HeuristicV3 {
+public class HeuristicV3_QuantilesGK {
 	
 	private int num_machines;
 	private String axis;
@@ -20,7 +20,7 @@ public class HeuristicV3 {
 	private int w;
 	private double e;
 	
-	public HeuristicV3(int num_attr, int num_machines, String axis, String metric, int w, double e) {
+	public HeuristicV3_QuantilesGK(int num_attr, int num_machines, String axis, String metric, int w, double e) {
 		this.num_machines = num_machines;
 		this.axis = axis;
 		this.metric = metric;
@@ -173,10 +173,15 @@ public class HeuristicV3 {
 
 			for (Map.Entry<Double, Integer> e : guidsPerPoint.entrySet()) {
 
-				double point = e.getKey();
-
-				double search_low_range  = s.getPairs().get(axis).getLow();
-				double search_high_range = s.getPairs().get(axis).getHigh();
+				double point = e.getKey(), search_low_range, search_high_range;
+				
+				if (s.getPairs().containsKey(axis)) {
+					search_low_range  = s.getPairs().get(axis).getLow();
+					search_high_range = s.getPairs().get(axis).getHigh();
+				} else {
+					search_low_range = 0;
+					search_high_range = 1;
+				}
 
 				boolean condition;
 
