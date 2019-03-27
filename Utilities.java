@@ -1103,10 +1103,58 @@ public class Utilities {
 		
 	}
 	
+	private static List<Region> pickBestSubspaceForASearch(List<List<Region>> subspaces, Search s) {
+		
+		int best_score = 0;
+		Map<Integer,Integer> scores = new TreeMap<Integer,Integer>();
+		
+		for (List<Region> subspace : subspaces) {
+			
+			int subspaceIndex = subspaces.indexOf(subspace);
+			int subspaceScore = 0;
+			scores.put(subspaceIndex, subspaceScore);
+			
+			for (String subspace_attribute : subspace.get(0).getPairs().keySet()) {
+				
+				if (s.getPairs().containsKey(subspace_attribute)) {					
+					subspaceScore++;
+				}
+				
+			}
+			
+			if (subspaceScore > best_score) {
+				best_score = subspaceScore;
+			}
+			
+		}
+		
+		List<Integer> indexes = new ArrayList<Integer>();
+		
+		for (Map.Entry<Integer, Integer> entry : scores.entrySet()) {
+			
+			int subspaceIndex = entry.getKey();
+			int subspaceScore = entry.getValue();
+			
+			if (subspaceScore == best_score) {
+				indexes.add(subspaceIndex);
+			}
+			
+		}
+		
+		int i = indexes.get((new Random().nextInt(indexes.size())));
+		
+		List<Region> bestSubspace = subspaces.get(i);
+		
+		return bestSubspace;
+		
+	}
+	
 	private static void checkSearchTouchesPerSubspace(List<List<Region>> subspaces, Search s) {
 		
 		// We pick a random subspace
-		List<Region> regions = subspaces.get((new Random().nextInt(subspaces.size())));
+		//List<Region> regions = subspaces.get((new Random().nextInt(subspaces.size())));
+		// We pick the best subspace for this search
+		List<Region> regions = pickBestSubspaceForASearch(subspaces, s);
 		
 		for (Region region : regions) { // iterate over regions
 
@@ -1541,7 +1589,9 @@ public class Utilities {
 				Search s = (Search)op;
 				
 				// pick a random subspace
-				List<Region> regions = subspaces.get((new Random().nextInt(subspaces.size())));
+				//List<Region> regions = subspaces.get((new Random().nextInt(subspaces.size())));
+				// pick the best subspace for this search
+				List<Region> regions = pickBestSubspaceForASearch(subspaces, s);
 
 				for (Region r : regions) { // iterate over regions
 
