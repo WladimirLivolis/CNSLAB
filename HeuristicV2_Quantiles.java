@@ -192,18 +192,19 @@ public class HeuristicV2_Quantiles {
 			if (op instanceof Search) {
 
 				Search s = (Search)op;
+				double search_low_range, search_high_range;
+				
+				if (s.getPairs().containsKey(axis)) {
+					search_low_range  = s.getPairs().get(axis).getLow();
+					search_high_range = s.getPairs().get(axis).getHigh();
+				} else {
+					search_low_range = 0;
+					search_high_range = 1;
+				}
 
 				for (Map.Entry<Double, Integer> e : guidsPerPoint.entrySet()) {
 
-					double point = e.getKey(), search_low_range, search_high_range;
-
-					if (s.getPairs().containsKey(axis)) {
-						search_low_range  = s.getPairs().get(axis).getLow();
-						search_high_range = s.getPairs().get(axis).getHigh();
-					} else {
-						search_low_range = 0;
-						search_high_range = 1;
-					}
+					double point = e.getKey();
 										
 					boolean condition;
 					
