@@ -30,7 +30,7 @@ public class HeuristicV1_CNS {
 	}
 	
 	/* Returns the least splitted region by looking for the oldest region, i.e., the region with the smallest iteration flag. */
-	private Region pickARegion() {
+	private Region pickARegion(List<Region> regions) {
 
 		Region least_splitted_region = regions.get(0);
 		int oldest_iteration = least_splitted_region.iteration;
@@ -59,7 +59,7 @@ public class HeuristicV1_CNS {
 	 * the JFI.*/
 	public List<Region> partition(Queue<Operation> oplist) {
 		
-		int num_attr = regions.get(0).getPairs().size();
+		int num_attr = this.regions.get(0).getPairs().size();
 		List<Region> regions = Utilities.buildNewRegions(num_attr);
 		
 		double n = (double) num_machines;
@@ -82,7 +82,7 @@ public class HeuristicV1_CNS {
 				
 			} else { 
 				
-				r = pickARegion();
+				r = pickARegion(regions);
 				
 			}
 				
@@ -107,10 +107,15 @@ public class HeuristicV1_CNS {
 					// Adds the two new regions to regions and removes the old one
 					newRegions.remove(regions.indexOf(r));
 					newRegions.add(newRegion1);
-					newRegions.add(newRegion2);	
-
+					newRegions.add(newRegion2);
+					
 					// Calculates JFI index
 					double jfindex = Utilities.JFI("load", oplist, newRegions);
+					
+					// Checks the guids' positions after creating these two regions
+//					checkGUIDs(r, newRegion1, newRegion2, i);
+					// Then calculates JFI based on touches
+//					double jfindex = Utilities.JFI("touches", oplist, newRegions);
 
 					// If JFIndex is the best so far, then we keep it
 					if (jfindex > bestJFI) {
@@ -143,7 +148,7 @@ public class HeuristicV1_CNS {
 
 	public List<Region> partitionPickingARandomAttr(Queue<Operation> oplist) {
 		
-		int num_attr = regions.get(0).getPairs().size();
+		int num_attr = this.regions.get(0).getPairs().size();
 		List<Region> regions = Utilities.buildNewRegions(num_attr);
 		
 		double n = (double) num_machines;
@@ -166,7 +171,7 @@ public class HeuristicV1_CNS {
 				
 			} else { 
 				
-				r = pickARegion();
+				r = pickARegion(regions);
 				
 			}
 			
@@ -197,6 +202,11 @@ public class HeuristicV1_CNS {
 
 				// Calculates JFI index
 				double jfindex = Utilities.JFI("load", oplist, newRegions);
+				
+				// Checks the guids' positions after creating these two regions
+//				checkGUIDs(r, newRegion1, newRegion2, i);
+				// Then calculates JFI based on touches
+//				double jfindex = Utilities.JFI("touches", oplist, newRegions);
 
 				// If JFIndex is the best so far, then we keep it
 				if (jfindex > bestJFI) {
@@ -223,6 +233,82 @@ public class HeuristicV1_CNS {
 		return Collections.unmodifiableList(this.regions);
 				
 	}
+	
+	private void checkGUIDs(Region r, Region newRegion1, Region newRegion2, int iteration) {
+		
+		if (iteration == 1) {
+		
+			for (Region region : regions) { // iterates over the original regions		
+			
+				for (Map.Entry<Integer, Map<String, Double>> guid : region.getGUIDs().entrySet()) { // iterates over guids from an original region
+					
+					boolean guid_belongs_to_region1 = true;
+					
+					for (Map.Entry<String, Double> guid_attr : guid.getValue().entrySet()) { // iterates over this guid's attributes
+						
+						String guidAttrKey = guid_attr.getKey();    
+						double guidAttrVal = guid_attr.getValue();
+						
+						if (newRegion1.getPairs().containsKey(guidAttrKey)) { // checks region1's range for this attribute
+						
+							double regionLowRange  = newRegion1.getPairs().get(guidAttrKey).getLow();
+							double regionHighRange = newRegion1.getPairs().get(guidAttrKey).getHigh();
+							
+							if (guidAttrVal < regionLowRange || guidAttrVal >= regionHighRange) { // checks whether attribute value is inside region1's range
+								guid_belongs_to_region1 = false;
+								break;
+							} 
+							
+						}
+						
+					}
+					
+					if (guid_belongs_to_region1) {
+						newRegion1.insertGuid(guid.getKey(), guid.getValue());
+					} else {
+						newRegion2.insertGuid(guid.getKey(), guid.getValue());
+					}
+					
+				}
+			
+			}
+			
+		} else {
+			
+			for (Map.Entry<Integer, Map<String, Double>> guid : r.getGUIDs().entrySet()) { // iterates over guids from the original region
+				
+				boolean guid_belongs_to_region1 = true;
+				
+				for (Map.Entry<String, Double> guid_attr : guid.getValue().entrySet()) { // iterates over this guid's attributes
+					
+					String guidAttrKey = guid_attr.getKey();    
+					double guidAttrVal = guid_attr.getValue();
+					
+					if (newRegion1.getPairs().containsKey(guidAttrKey)) { // checks region1's range for this attribute
+					
+						double regionLowRange  = newRegion1.getPairs().get(guidAttrKey).getLow();
+						double regionHighRange = newRegion1.getPairs().get(guidAttrKey).getHigh();
+						
+						if (guidAttrVal < regionLowRange || guidAttrVal >= regionHighRange) { // checks whether attribute value is inside region1's range
+							guid_belongs_to_region1 = false;
+							break;
+						} 
+						
+					}				
+					
+				}
+				
+				if (guid_belongs_to_region1) {
+					newRegion1.insertGuid(guid.getKey(), guid.getValue());
+				} else {
+					newRegion2.insertGuid(guid.getKey(), guid.getValue());
+				}
+				
+			}
+			
+		}
+		
+	}	
 	
 	/* Returns the previously created regions */
 	public List<Region> getRegions() {
