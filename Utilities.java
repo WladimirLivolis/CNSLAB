@@ -1112,7 +1112,6 @@ public class Utilities {
 			
 			int subspaceIndex = subspaces.indexOf(subspace);
 			int subspaceScore = 0;
-			scores.put(subspaceIndex, subspaceScore);
 			
 			for (String subspace_attribute : subspace.get(0).getPairs().keySet()) {
 				
@@ -1121,6 +1120,8 @@ public class Utilities {
 				}
 				
 			}
+			
+			scores.put(subspaceIndex, subspaceScore);
 			
 			if (subspaceScore > best_score) {
 				best_score = subspaceScore;
