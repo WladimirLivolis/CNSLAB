@@ -305,7 +305,7 @@ public class HeuristicV3_QuantilesGK {
 		newRegion.setPair(axis, low, high);
 		newRegions.add(newRegion);
 				
-		regions = newRegions;
+		Utilities.copyRegionsRanges(regions, newRegions);
 		
 		System.out.println(Utilities.printRegions(regions));
 		

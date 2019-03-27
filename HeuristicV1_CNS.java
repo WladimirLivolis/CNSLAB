@@ -59,9 +59,8 @@ public class HeuristicV1_CNS {
 	 * the JFI.*/
 	public List<Region> partition(Queue<Operation> oplist) {
 		
-		// to enforce regions is clean
 		int num_attr = regions.get(0).getPairs().size();
-		regions = Utilities.buildNewRegions(num_attr);
+		List<Region> regions = Utilities.buildNewRegions(num_attr);
 		
 		double n = (double) num_machines;
 		int num_iterations = ((int)Math.sqrt(n)) - 1;
@@ -133,18 +132,19 @@ public class HeuristicV1_CNS {
 
 		}
 		
-		System.out.println(Utilities.printRegions(regions));
-				
-		return Collections.unmodifiableList(regions);
+		Utilities.copyRegionsRanges(this.regions, regions);
+		
+		System.out.println(Utilities.printRegions(this.regions));
+		
+		return Collections.unmodifiableList(this.regions);
 				
 	}
 	
 
 	public List<Region> partitionPickingARandomAttr(Queue<Operation> oplist) {
 		
-		// to enforce regions is clean
 		int num_attr = regions.get(0).getPairs().size();
-		regions = Utilities.buildNewRegions(num_attr);
+		List<Region> regions = Utilities.buildNewRegions(num_attr);
 		
 		double n = (double) num_machines;
 		int num_iterations = ((int)Math.sqrt(n)) - 1;
@@ -216,9 +216,11 @@ public class HeuristicV1_CNS {
 
 		}
 		
-		System.out.println(Utilities.printRegions(regions));
+		Utilities.copyRegionsRanges(this.regions, regions);
+		
+		System.out.println(Utilities.printRegions(this.regions));
 				
-		return Collections.unmodifiableList(regions);
+		return Collections.unmodifiableList(this.regions);
 				
 	}
 	
