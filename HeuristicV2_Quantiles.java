@@ -13,7 +13,7 @@ public class HeuristicV2_Quantiles {
 	private String metric;
 	private List<Region> regions;
 	private Map<Double, Double> quantiles;
-	private Map<Double, Integer> guidsPerPoint;
+//	private Map<Double, Integer> guidsPerPoint;
 	
 	public HeuristicV2_Quantiles(int num_attr, int num_machines, String axis, String metric) {
 		this.num_machines = num_machines;
@@ -21,7 +21,7 @@ public class HeuristicV2_Quantiles {
 		this.metric = metric;
 		regions = buildNewRegions(num_attr, num_machines, axis);
 		quantiles = new TreeMap<Double, Double>();
-		guidsPerPoint = new TreeMap<Double, Integer>();
+//		guidsPerPoint = new TreeMap<Double, Integer>();
 	}
 	
 	private List<Region> buildNewRegions(int num_attr, int num_machines, String axis) {
@@ -138,7 +138,7 @@ public class HeuristicV2_Quantiles {
 	private Map<Double, Integer> updateAndSearchTouchesCounter(Queue<Operation> oplist) {
 
 		Map<Double, Integer> touchesPerPoint = new TreeMap<Double, Integer>();
-//		Map<Double, Integer> guidsPerPoint = new TreeMap<Double, Integer>();
+		Map<Double, Integer> guidsPerPoint = new TreeMap<Double, Integer>();
 
 		for (Operation op : oplist) { // iterate over all operations
 
