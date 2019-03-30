@@ -317,10 +317,10 @@ public class HeuristicV2_Quantiles {
 		
 		double low = 0, high = 1;
 		
-//		Map<Double, Double> newQuantiles = findQuantiles(oplist);
-//		if (!newQuantiles.isEmpty()) { quantiles = newQuantiles; }
+		Map<Double, Double> newQuantiles = findQuantiles(oplist);
+		if (!newQuantiles.isEmpty()) { quantiles = newQuantiles; }
 		
-		quantiles = findQuantiles(oplist);
+//		quantiles = findQuantiles(oplist);
 
 		for (Map.Entry<Double, Double> e : quantiles.entrySet()) {
 
